@@ -19,29 +19,71 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Click **Run the FDE**, then open **② Brief** and **③ Team board**. No API key and no internet are needed.
-To test everything: `python test_workflow.py`. To regenerate the data: `python data/generate.py`.
+Click **Run the FDE**, then open **② Brief** and **③ Team board**. On first launch the app loads the synthetic
+data into `crewasis.db` (SQLite). Everything works with no LLM; the LLM only rewords.
+
+### Connect the LLM (Ollama · Nemotron 3 Ultra)
+
+Set these **before** starting the app. Never put the key in the code or in git.
+
+```bash
+# Local Ollama (no key needed)
+ollama pull nemotron-3-ultra
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=nemotron-3-ultra
+
+# or Ollama Cloud
+export OLLAMA_HOST=https://ollama.com
+export OLLAMA_MODEL=nemotron-3-ultra        # use the exact model name your account lists
+export OLLAMA_API_KEY=...                   # sent as a Bearer token, never stored or logged
+
+streamlit run app.py
+```
+
+In the sidebar, **Test connection** checks the server and the model. **Use the LLM** turns it off for a fully
+offline run (or set `CREWASIS_OFFLINE=1`). `OLLAMA_TIMEOUT` (seconds, default 180) limits each call.
+
+**What the LLM does, and the guardrails on it:**
+
+| Step | LLM job | Guardrail if the answer is bad |
+|---|---|---|
+| Plan | pick lenses and products for the problem | only the 6 known lenses and 2 products are kept; nothing valid → all lenses |
+| Synthesize | rewrite the brief in plain words, write a summary | every sentence must keep its own citation, cite real ids, and use only numbers from the cited facts; otherwise the template is shown and the reason is logged |
+| Frame | word each card's action for its team (also on hand-off) | one sentence, ≤ 30 words, no invented numbers; the Gate checks both the LLM wording **and** the template's intent, so rewording can't dodge approval |
+
+Every call is logged (**What the LLM did** on the Brief) and cached in the database, so re-runs are instant and
+free. A timeout, a missing model, a server error, `<think>` blocks or broken JSON all fall back to templates.
+
+### Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q          # 116 tests, about 2.5 minutes
+```
+
+The suite covers the data load, the README numbers, every lens on its own, whey-only and empty plans, bad
+problem text, prompt injection, bad LLM answers of every kind, the Ollama client against a stub server
+(timeouts, retries, 404, auth header, caching), every legal and illegal card move, and the app driven headlessly.
+To regenerate the data: `python data/generate.py`.
 
 ### What's built vs. the full design below
 
-The rest of this README is the **full design**. The demo build is a cut-down version of it, made to run reliably
-on a laptop:
+The rest of this README is the **full design**. The build follows it, with these differences:
 
-| Part | In the demo build | Full design |
+| Part | In the build | Full design |
 |---|---|---|
-| Data | 5 synthetic CSVs + `sources.csv` (reviews 150, social 146, competitors 8, sales 24, orders 7,373 rows) | same, then live connectors |
+| Data | 5 synthetic sources loaded into SQLite `evidence` (reviews 150, social 146, competitors 8, sales 24, orders 7,373 rows) | same, then live connectors |
+| Database | `sources`, `evidence`, `engagements`, `facts`, `play_matches`, `brief_sections`, `cards`, `card_events`, `llm_cache`, `llm_calls` | same |
 | Lenses | 6: product, competitor, customer, channel, retention, **community (where buyers talk: Reddit, X, Instagram)** | same |
-| Facts | 13 (F1–F13), all calculated in `engine.py` | same |
-| Retention playbook | 9 plays: PL1–PL7 plus **PL8 · Answer where they ask** and **PL9 · Show up where competitors talk**. 8 match; PL7 is shown as not matched, with the reason | same |
-| Brief | findings with citations, rows behind every fact, root causes with confidence by rule, retention plan, where to show up, gaps, sources used | same |
-| Check step | `check_citations()` + `check_numbers()` run on every sentence (21 of 21 pass). Tick **Simulate an LLM mistake** in the sidebar to watch a wrong number get caught and replaced | same, on LLM-written sentences |
-| LLM | **none**: plan, brief and actions use templates, so the demo can't fail on a key or Wi-Fi | Plan, Synthesize and Frame use an LLM |
+| Facts | up to 14 (F1–F14; F14 is whey pricing), all calculated in `engine.py` | same |
+| Retention playbook | 9 plays: PL1–PL7 plus **PL8 · Answer where they ask** and **PL9 · Show up where competitors talk**. Plays whose data wasn't analysed show as "not checked" | same |
+| LLM | Ollama (`llm.py`), Plan + Synthesize + Frame, validated and checked, template fallback | any provider |
 | Pipeline | plain Python functions | LangGraph |
-| Cards | 13 work cards, 4 approval cards at the start; accept, execute, approve, reject, ask again, hand off (re-score, re-word, re-gate, withdraw stale approvals); full event history | same |
+| Analyses | saved and reloadable from the sidebar; each has its own Team board | same |
 | Referral | not built | slide only |
 
-**Built files:** `app.py` (Streamlit UI) · `engine.py` (lenses, facts, playbook, scoring, gate, checks) ·
-`workflow.py` (card lifecycle) · `db.py` (SQLite) · `data/generate.py` + CSVs · `test_workflow.py`.
+**Built files:** `app.py` (UI) · `engine.py` (lenses, facts, playbook, scoring, gate, checks, LLM steps) ·
+`llm.py` (Ollama client) · `workflow.py` (card lifecycle) · `db.py` (SQLite) · `data/` · `tests/`.
 
 ---
 
@@ -151,7 +193,7 @@ The engine is split into four layers so it can grow without being rewritten:
 | Data | 5 synthetic CSVs plus a source registry | There's no real marketplace or Instagram API access. Synthetic data is expected, and we say so in the pitch. |
 | Storage | SQLite via built-in `sqlite3` | A single file with no server and no ORM. |
 | Pipeline | LangGraph, 10 small steps | Each step does one job and can be checked on its own. It is not a multi-agent system. |
-| LLM | OpenAI API behind a thin wrapper, swappable to Anthropic | Used for **planning and wording only** (Plan, Synthesize, Frame). Never used to compute a number, rank or approve. |
+| LLM | Ollama (Nemotron 3 Ultra) behind a thin client in `llm.py` | Used for **planning and wording only** (Plan, Synthesize, Frame). Never used to compute a number, rank or approve. |
 | UI | Streamlit | Three screens: Ask the FDE, Brief, Team board. |
 | Retrieval | None: the relevant rows and facts go straight into the prompt | With a few hundred rows, a vector database adds risk and no value. |
 
@@ -431,7 +473,7 @@ The action *"Send a reorder reminder on day 22…"* has no trigger words, so it 
 *"…with a win-back offer"* matches "offer", so it does.
 
 ### Offline mode
-If `OPENAI_API_KEY` is missing, `CREWASIS_OFFLINE=1` is set, or an LLM call fails, the LLM steps fall back to
+If the LLM is switched off, `CREWASIS_OFFLINE=1` is set, or an LLM call fails, the LLM steps fall back to
 templates in `pipeline.py`:
 - **Plan:** run all five lenses.
 - **Synthesize:** one template sentence per fact, e.g. `"{theme} is mentioned in {magnitude:.0%} of 1–2★ reviews, {change_pct:+}% on last quarter [{fact_id}]."`
@@ -597,22 +639,22 @@ Requires **Python 3.11+**.
 pip install -r requirements.txt
 ```
 
-```bash
-export OPENAI_API_KEY=sk-...
-```
+Set the Ollama variables from [Connect the LLM](#connect-the-llm-ollama--nemotron-3-ultra) first.
 
 ```bash
 streamlit run app.py
 ```
 
-On first launch the app loads the CSVs and runs the demo engagement **only if `engagements` is empty**
-(about 13 LLM calls: 1 Plan, 1 Synthesize, 1 Frame per card). Later launches reuse `crewasis.db` and make no
-LLM calls. A new problem typed into *Ask the FDE* runs a new engagement on the same data.
+On first launch the app loads the CSVs into `crewasis.db`. Each analysis makes 3 LLM calls (Plan, Synthesize,
+and one batched Frame call for all cards) plus 1 per hand-off. Answers are cached, so re-running the same problem
+makes no new calls. Past analyses stay in the sidebar.
 
 | Variable | Purpose |
 |---|---|
-| `OPENAI_API_KEY` | default LLM provider |
-| `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | switch to Anthropic |
+| `OLLAMA_HOST` | Ollama server, default `http://localhost:11434` |
+| `OLLAMA_MODEL` | model name, default `nemotron-3-ultra` |
+| `OLLAMA_API_KEY` | only for Ollama Cloud |
+| `OLLAMA_TIMEOUT` | seconds per call, default 180 |
 | `CREWASIS_OFFLINE=1` | skip the LLM and use templates |
 
 To start over from scratch:
