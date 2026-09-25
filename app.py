@@ -196,8 +196,8 @@ with st.sidebar:
 
 eid = st.session_state.get("eid")
 e = engagement(eid) if eid else None
-if e is not None:
-    workflow.seed(con, e) if not db.cards(con, engagement_id=e.id) else None
+if e is not None and not db.cards(con, engagement_id=e.id):
+    workflow.seed(con, e)
 sentences = engine.with_simulated_mistake(e) if (e is not None and simulate) else (e.sentences if e else [])
 
 if "flash" in st.session_state:
