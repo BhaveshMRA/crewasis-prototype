@@ -3,6 +3,9 @@
 Every change is logged to card_events. Invalid moves raise ValueError (or PermissionError when approval is
 missing), so a double click or a stale page can never put a card into an impossible state.
 """
+import json
+from datetime import timedelta
+
 import db
 import engine
 
@@ -16,11 +19,16 @@ class InvalidMove(ValueError):
 # tapped it: similar cards (same category) drop for that team only; every other team's ranking is untouched.
 LEARN_RATE = 0.8      # each tap multiplies that team's weight for the category by 0.8
 LEARN_FLOOR = 0.3     # never below 30%, so a signal can't disappear completely
+OUTCOME_UP, OUTCOME_DOWN, LEARN_CEILING = 1.1, 0.9, 1.5   # logged outcomes nudge the same weight
+OUTCOMES = {"improved": "Improved", "no_change": "No change", "worse": "Worse"}
 
 
 def learned_multiplier(con, role, category, counts=None) -> float:
+    """0.8 per 'not relevant' tap × 1.1 per improved outcome × 0.9 per worse outcome, kept within [0.3, 1.5]."""
     n = (counts if counts is not None else db.feedback_counts(con)).get((role, category), 0)
-    return max(LEARN_FLOOR, LEARN_RATE ** n)
+    up = db.feedback_counts(con, "improved").get((role, category), 0)
+    down = db.feedback_counts(con, "worse").get((role, category), 0)
+    return min(LEARN_CEILING, max(LEARN_FLOOR, LEARN_RATE ** n * OUTCOME_UP ** up * OUTCOME_DOWN ** down))
 
 
 def ranking(con, c: dict, counts=None) -> float:
@@ -54,6 +62,47 @@ def _request_approval(con, work: dict) -> int:
     db.log(con, aid, "approval_requested", from_role=work["owner_role"], to_role="Strategy",
            to_state="Pending approval")
     return aid
+
+
+def _after_execute(con, c: dict):
+    """Every executed card gets an outcome to check; a confirmed 'gather more evidence' card releases what it held."""
+    db.add_outcome(con, c, (engine.AS_OF + timedelta(days=engine.CHECK_AFTER_DAYS)).isoformat())
+    held = json.loads(c.get("held") or "[]")
+    if held:
+        for h in held:
+            nid = db.add_card(con, engagement_id=c["engagement_id"], kind="work", state="Surfaced",
+                              requires_approval=bool(h.get("gate_rule")), **{k: v for k, v in h.items()
+                                                                              if k != "held"})
+            if h.get("gate_rule"):
+                _request_approval(con, db.card(con, nid))
+        db.update_card(con, c["id"], held="[]")
+        db.add_trace(con, c["engagement_id"], [engine.trace_row(
+            "Governance", f"Evidence confirmed by {c['owner_role']}: released {len(held)} held action(s)",
+            "; ".join(f"{h['owner_role']}: {h['suggested_action']}" for h in held),
+            [h.get("play_id") or h["fact_id"] for h in held])])
+
+
+def record_outcome(con, card_id, result):
+    """A team logs what happened after an action ran; improved/worse feed that team's learning."""
+    c = _card(con, card_id)
+    o = db.outcome(con, card_id)
+    if c["state"] != "Executed" or o is None:
+        raise InvalidMove("Only an executed card has an outcome to log.")
+    if result not in OUTCOMES:
+        raise InvalidMove(f"Unknown outcome {result!r}.")
+    if o["result"] != "waiting":
+        raise InvalidMove(f"The outcome was already logged as {OUTCOMES[o['result']].lower()}.")
+    db.set_outcome(con, card_id, result)
+    if result in ("improved", "worse"):
+        db.add_feedback(con, c, result)
+    m = learned_multiplier(con, c["owner_role"], c["category"])
+    human(con, c["engagement_id"], c["owner_role"],
+          f"Logged the outcome of {tag(c)}: {OUTCOMES[result].lower()} ({c['metric']})", [tag(c)])
+    if result != "no_change":
+        db.add_trace(con, c["engagement_id"], [engine.trace_row(
+            "Router", f"Learned from the outcome: {c['owner_role']}'s {c['category']} cards now rank at ×{m:.2f}",
+            evidence=[tag(c)])])
+    con.commit()
 
 
 def seed(con, e: engine.Engagement):
@@ -135,6 +184,7 @@ def execute(con, card_id):
     db.log(con, card_id, "executed", c["owner_role"], c["owner_role"], c["state"], "Executed")
     human(con, c["engagement_id"], c["owner_role"], f"Executed {tag(c)} (simulated): {c['suggested_action']}",
           [tag(c)])
+    _after_execute(con, c)
     con.commit()
 
 
@@ -153,6 +203,7 @@ def approve(con, approval_id):
     db.update_card(con, w["id"], state="Executed")
     db.log(con, w["id"], "executed", w["owner_role"], w["owner_role"], w["state"], "Executed")
     human(con, w["engagement_id"], "Strategy", f"Approved {tag(w)} ({a['gate_rule']}); it ran (simulated)", [tag(w)])
+    _after_execute(con, w)
     con.commit()
 
 
@@ -221,6 +272,7 @@ def metrics(con, e: engine.Engagement, sentences=None) -> dict:
         "Cards": len(work),
         "In progress": sum(c["state"] in ("Surfaced", "Drafted") for c in work),
         "Not relevant": sum(c["state"] == "Dismissed" for c in work),
+        "Outcomes logged": sum(o["result"] != "waiting" for o in db.outcomes(con, e.id)),
         "Awaiting approval": sum(a["state"] == "Pending approval" for a in approvals),
         "Executed": len(executed),
         "Avg hand-offs to execution": round(sum(handoffs) / len(handoffs), 1) if handoffs else 0.0,

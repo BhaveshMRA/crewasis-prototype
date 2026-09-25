@@ -1,4 +1,4 @@
-"""The Streamlit app, driven headlessly: offline, with a stub Ollama, with Ollama down, and with bad input."""
+"""The Streamlit app, driven headlessly against a stub Ollama: the full demo flow, the upgrades, and failures."""
 import json
 from pathlib import Path
 
@@ -15,21 +15,23 @@ APP = str(Path(__file__).resolve().parents[1] / "app.py")
 def app(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", tmp_path / "app.db")
     monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    monkeypatch.delenv("CREWASIS_OFFLINE", raising=False)
     st.cache_resource.clear()
     st.cache_data.clear()
 
-    def start(offline=True, host=None):
-        if offline:
-            monkeypatch.setenv("CREWASIS_OFFLINE", "1")
-        else:
-            monkeypatch.delenv("CREWASIS_OFFLINE", raising=False)
-        if host:
-            monkeypatch.setenv("OLLAMA_HOST", host)
-        at = AppTest.from_file(APP, default_timeout=120).run()
+    def start(host):
+        monkeypatch.setenv("OLLAMA_HOST", host)
+        at = AppTest.from_file(APP, default_timeout=180).run()
         assert not at.exception, at.exception
         return at
     yield start
     st.cache_resource.clear()
+
+
+@pytest.fixture
+def model(ollama):
+    ollama.auto = True
+    return ollama
 
 
 def button(at, label):
@@ -40,7 +42,7 @@ def markdown(at):
     return "\n".join(m.value for m in at.markdown)
 
 
-def run_fde(at, problem=None):
+def ask(at, problem=None):
     if problem is not None:
         at.text_area[0].set_value(problem)
     button(at, "Ask Winston").click().run()
@@ -48,39 +50,73 @@ def run_fde(at, problem=None):
     return at
 
 
-def test_offline_demo_flow(app):
-    at = app(offline=True)
+def role(at, name):
+    at.sidebar.selectbox(key="role").set_value(name).run()
+    assert not at.exception, at.exception
+
+
+def test_full_demo_flow_with_the_llm(app, model):
+    at = app(model.url)
     assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
-    run_fde(at)
+    ask(at)
     md = markdown(at)
     assert "Brief · analysis #1" in [h.value for h in at.header]
-    assert "Texture is the top complaint" in md and "Offline: the LLM is switched off" in "\n".join(c.value for c in at.caption)
-    # Marketing: accept the gated sugar card; it can't be executed yet
-    next(b for b in at.button if b.label == "Accept").click().run()
+    assert "LLM · checked" in md and "is the clearest problem" in md          # the LLM's own summary
+    assert "Likely root causes" in [s.value for s in at.subheader]            # named by the LLM, scored by code
+    assert "Agent trace" in [h.value for h in at.header]
+    assert "Planner" in md and "Governance" in md and "Framer" in md
+    # Marketing: the gated sugar card can't run until Strategy approves
+    button(at, "Accept").click().run()
     assert any(b.label == "Awaiting Strategy approval" and b.disabled for b in at.button)
-    # Strategy approves it
-    at.sidebar.selectbox(key="role").set_value("Strategy").run()
+    role(at, "Strategy")
     assert len([b for b in at.button if b.label == "Approve"]) == 4
     button(at, "Approve").click().run()
     assert not at.exception
     assert len([b for b in at.button if b.label == "Approve"]) == 3
 
 
-def test_problem_validation(app):
-    at = run_fde(app(offline=True), "hi")
+def test_not_relevant_and_restore(app, model):
+    at = ask(app(model.url))
+    button(at, "Not relevant ×").click().run()
+    assert not at.exception
+    assert "Only Marketing's ranking changed" in markdown(at) or "Marked not relevant by Marketing" in \
+        "\n".join(e.label for e in at.expander)
+    button(at, "Restore").click().run()
+    assert not at.exception
+
+
+def test_thin_evidence_confirm_releases_held_actions(app, model):
+    at = ask(app(model.url))
+    role(at, "Insights")
+    assert "Evidence is thin" in markdown(at)
+    accepts = [b for b in at.button if b.label == "Accept"]
+    for b in accepts:
+        b.click().run()
+    button(at, "Confirm evidence").click().run()
+    assert not at.exception
+    role(at, "R&D")
+    assert "Trial a foil-lined wrapper" in markdown(at)
+
+
+def test_outcome_logging(app, model):
+    at = ask(app(model.url))
+    role(at, "Strategy")
+    button(at, "Accept").click().run()
+    button(at, "Decide").click().run()
+    assert "Outcome to watch" in markdown(at)
+    button(at, "Improved").click().run()
+    assert not at.exception and "Improved" in markdown(at)
+
+
+def test_problem_validation(app, model):
+    at = ask(app(model.url), "hi")
     assert any("Describe the problem" in e.value for e in at.error)
     assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
 
 
-def test_simulated_mistake_shows_warning(app):
-    at = run_fde(app(offline=True))
-    at.sidebar.checkbox[0].check().run()
-    assert any("Not verified" in x.value for x in at.error)
-
-
-def test_history_and_reset(app):
-    at = run_fde(app(offline=True))
-    run_fde(at, "Why is our whey protein powder not selling on marketplaces?")
+def test_history_and_reset(app, model):
+    at = ask(app(model.url))
+    ask(at, "Why is our whey protein powder not selling on marketplaces?")
     assert len(at.sidebar.selectbox(key="eid").options) == 2
     assert "Brief · analysis #2" in [h.value for h in at.header]
     at.sidebar.selectbox(key="eid").set_value(1).run()
@@ -89,32 +125,13 @@ def test_history_and_reset(app):
     assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
 
 
-def test_llm_flow_with_stub_ollama(app, ollama):
-    ollama.reply(json.dumps({"lenses": ["product", "retention", "community"], "products": ["bar"],
-                             "questions": ["Why do buyers stop?"]}))
-    ollama.reply(json.dumps({"summary": "Texture is the main reason buyers leave [F1] [F8].",
-                             "sentences": [{"key": "find:F1",
-                                            "text": "34% of this quarter's bad reviews call the bar chalky or dry [F1]."}]}))
-    ollama.reply(json.dumps({"sentences": []}))
-    ollama.reply(json.dumps({"actions": [{"key": "c0", "action": "Test a softer bar base with 20 testers."}]}))
-    ollama.reply(json.dumps({"actions": []}))
-    at = app(offline=False, host=ollama.url)
-    run_fde(at)
-    md = markdown(at)
-    assert "LLM · checked" in md and "Texture is the main reason buyers leave" in md
-    assert "planned by llm" in md
-    assert [p[1] for p in ollama.posts()] == ["/api/chat"] * 5
-    assert not any("failed call" in w.value for w in at.warning)
+def test_llm_down_shows_an_error_not_template_text(app):
+    at = ask(app("http://127.0.0.1:9"))
+    assert any("Winston couldn't complete the analysis" in e.value for e in at.error)
+    assert "Ask Winston first (tab ①)." in [i.value for i in at.info]   # nothing was shown instead
 
 
-def test_ollama_down_falls_back_with_a_warning(app):
-    at = app(offline=False, host="http://127.0.0.1:9")
-    run_fde(at)
-    assert any("couldn't be reached" in w.value for w in at.warning)
-    assert "Texture is the top complaint" in markdown(at)
-
-
-def test_connection_check(app, ollama):
-    at = app(offline=False, host=ollama.url)
+def test_connection_check(app, model):
+    at = app(model.url)
     button(at, "Test connection").click().run()
     assert any("is available" in s.value for s in at.success)

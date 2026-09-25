@@ -1,14 +1,14 @@
 """Ollama client for the three LLM steps (Plan, Synthesize, Frame).
 
-The LLM only plans and words things. Every answer is parsed, validated and checked by the engine, and
-anything that fails falls back to a template, so a slow, broken or missing model never breaks the app.
+The LLM only plans and words things. Every answer is parsed, validated and checked by the engine. A failed
+call returns None and is logged; the app then refuses to show the analysis rather than fill it with template text.
 
 Configuration (environment variables):
     OLLAMA_HOST      default http://localhost:11434 (Ollama Cloud: https://ollama.com)
     OLLAMA_MODEL     default nemotron-3-ultra
     OLLAMA_API_KEY   only for Ollama Cloud; sent as a Bearer token, never stored or logged
     OLLAMA_TIMEOUT   seconds per request, default 180
-    CREWASIS_OFFLINE set to 1 to skip the LLM and use templates
+    CREWASIS_OFFLINE set to 1 to get no client (tests and development only; the app needs the LLM)
 These can also go in a .env file next to app.py (see .env.example); .env is git-ignored.
 """
 from __future__ import annotations

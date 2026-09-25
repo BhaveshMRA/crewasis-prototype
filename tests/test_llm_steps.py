@@ -66,7 +66,7 @@ def test_llm_unavailable_means_template_plan(con, data, fake_llm):
 def test_llm_exceptions_never_break_a_run(con, data, fake_llm):
     boom = RuntimeError("model crashed")
     e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(plan=boom, synthesize=boom, frame=boom), data)
-    assert len(e.cards) == 14 and all(s.status == "passed" for s in e.sentences)
+    assert len(e.cards) == 13 and all(s.status == "passed" for s in e.sentences if s.key != "summary")
 
 
 # ---------------------------------------------------------------- Synthesize
@@ -270,3 +270,36 @@ def test_llm_wording_survives_reload(con, data, fake_llm):
     e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=rewrite_all(plainer)), data)
     again = engine.load_engagement(con, e.id, data)
     assert sum(s.written_by == "llm" for s in again.sentences) == sum(s.written_by == "llm" for s in e.sentences) > 0
+
+
+# ---------------------------------------------------------------- root causes are the LLM's, checked by code
+def test_root_causes_are_named_by_the_llm_and_scored_from_evidence(con, data, fake_llm):
+    causes = [
+        {"cause": "Customers dislike the new chalky texture", "facts": ["F1", "F8"]},
+        {"cause": "Rivals own the low-sugar message", "facts": ["[F3]", "F12"]},
+        {"cause": "The moon phase changed", "facts": []},                   # no evidence: dropped
+        {"cause": "Sales fell 99% because of price", "facts": ["F2"]},      # invented number: dropped
+        {"cause": "Made-up fact", "facts": ["F404"]},                       # unknown fact: dropped
+    ]
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize={"summary": "Fix texture first [F1].",
+                                                                  "sentences": [], "root_causes": causes}), data)
+    # both are High confidence; the one with the stronger evidence score ranks first
+    assert [r["cause"] for r in e.root_causes] == ["Rivals own the low-sugar message",
+                                                   "Customers dislike the new chalky texture"]
+    by = {r["cause"]: r for r in e.root_causes}
+    assert by["Customers dislike the new chalky texture"]["facts"] == ["F1", "F8"]
+    assert by["Rivals own the low-sugar message"]["facts"] == ["F3", "F12"]  # "[F3]" cleaned up
+    assert all(r["confidence"] == "High" for r in e.root_causes)
+    assert e.root_causes[0]["score"] >= e.root_causes[1]["score"]
+    assert len(e.dropped_causes) == 3 and any("99" in d for d in e.dropped_causes)
+    again = engine.load_engagement(con, e.id, data)
+    assert [r["cause"] for r in again.root_causes] == [r["cause"] for r in e.root_causes]
+
+
+def test_strict_run_fails_cleanly_when_the_llm_is_silent(con, data, fake_llm):
+    with pytest.raises(engine.LLMUnavailable):
+        engine.run(con, engine.DEMO_PROBLEM, fake_llm(plan=None), data, strict=True)
+    with pytest.raises(engine.LLMUnavailable):
+        engine.run(con, engine.DEMO_PROBLEM, fake_llm(plan={"lenses": ["product"], "products": ["bar"],
+                                                            "questions": []}, synthesize=None), data, strict=True)
+    assert [x["status"] for x in db.engagements(con)] == ["failed", "failed"]

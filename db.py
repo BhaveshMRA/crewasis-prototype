@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS cards (
     suggested_action TEXT NOT NULL,
     written_by TEXT DEFAULT 'template', -- who worded the action: llm · template (offline)
     flag TEXT DEFAULT '',               -- why the LLM's wording couldn't be verified, if it couldn't
+    metric TEXT DEFAULT '',             -- what to measure once the action has run
+    baseline TEXT DEFAULT '',           -- its value today
+    held TEXT DEFAULT '[]',             -- cards held until this "gather more evidence" card is confirmed
     requires_approval INTEGER NOT NULL,
     gate_rule TEXT,
     note TEXT DEFAULT '',
@@ -100,6 +103,13 @@ CREATE TABLE IF NOT EXISTS feedback (
     active INTEGER NOT NULL DEFAULT 1,  -- 0 once undone
     at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS outcomes (
+    card_id INTEGER PRIMARY KEY REFERENCES cards(id),
+    engagement_id INTEGER,
+    metric TEXT, baseline TEXT, check_on TEXT,
+    result TEXT NOT NULL DEFAULT 'waiting',   -- waiting · improved · no_change · worse
+    at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS llm_cache (
     key TEXT PRIMARY KEY, response TEXT NOT NULL, created_at TEXT NOT NULL
 );
@@ -125,7 +135,9 @@ def connect(path=None) -> sqlite3.Connection:
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
     # upgrade databases created before a column existed
-    for table, column, ddl in (("cards", "flag", "TEXT DEFAULT ''"),
+    for table, column, ddl in (("engagements", "root_causes", "TEXT DEFAULT '[]'"),
+                               ("cards", "flag", "TEXT DEFAULT ''"), ("cards", "metric", "TEXT DEFAULT ''"),
+                               ("cards", "baseline", "TEXT DEFAULT ''"), ("cards", "held", "TEXT DEFAULT '[]'"),
                                ("brief_sections", "key", "TEXT NOT NULL DEFAULT ''")):
         if column not in {r[1] for r in con.execute(f"PRAGMA table_info({table})")}:
             con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
@@ -165,7 +177,7 @@ def ensure_seeded(con, data_dir: Path = DATA) -> dict:
 
 def reset(con):
     """Clear every engagement and card; keep the loaded evidence and the LLM cache."""
-    con.executescript("DELETE FROM card_events; DELETE FROM feedback; DELETE FROM agent_trace; DELETE FROM cards; "
+    con.executescript("DELETE FROM card_events; DELETE FROM feedback; DELETE FROM outcomes; DELETE FROM agent_trace; DELETE FROM cards; "
                       "DELETE FROM brief_sections; DELETE FROM play_matches; DELETE FROM facts; "
                       "DELETE FROM engagements; DELETE FROM llm_calls;")
     con.commit()
@@ -185,6 +197,15 @@ def engagement(con, eid):
     d = dict(r)
     d["plan"] = json.loads(d["plan"])
     return d
+
+
+def save_root_causes(con, eid, causes):
+    con.execute("UPDATE engagements SET root_causes = ? WHERE id = ?", (json.dumps(causes, default=str), eid))
+
+
+def root_causes(con, eid):
+    r = con.execute("SELECT root_causes FROM engagements WHERE id = ?", (eid,)).fetchone()
+    return json.loads(r[0] or "[]") if r else []
 
 
 def engagements(con):
@@ -231,11 +252,13 @@ def add_card(con, **c) -> int:
     cur = con.execute(
         "INSERT INTO cards (engagement_id, fact_id, play_id, kind, parent_card_id, category, owner_role, state, base, "
         "relevance_score, evidence, suggested_action, written_by, requires_approval, gate_rule, note, created_at, "
-        "updated_at, flag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "updated_at, flag, metric, baseline, held) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        "?, ?, ?)",
         (c.get("engagement_id"), c["fact_id"], c.get("play_id"), c["kind"], c.get("parent_card_id"), c["category"],
          c["owner_role"], c["state"], c["base"], c["relevance_score"], c["evidence"], c["suggested_action"],
          c.get("written_by", "template"), int(bool(c.get("requires_approval"))), c.get("gate_rule"),
-         c.get("note", ""), t, t, c.get("flag", "")))
+         c.get("note", ""), t, t, c.get("flag", ""), c.get("metric", ""), c.get("baseline", ""),
+         json.dumps(c.get("held", []), default=str)))
     log(con, cur.lastrowid, "created", to_role=c["owner_role"], to_state=c["state"])
     return cur.lastrowid
 
@@ -335,14 +358,34 @@ def undo_feedback(con, card_id):
     con.execute("UPDATE feedback SET active = 0 WHERE card_id = ? AND active = 1", (card_id,))
 
 
-def feedback_counts(con) -> dict:
-    """{(role, category): number of active 'not relevant' taps}, across every analysis."""
+def feedback_counts(con, signal="not_relevant") -> dict:
+    """{(role, category): number of active signals of this kind}, across every analysis."""
     return {(r["role"], r["category"]): r["n"] for r in con.execute(
-        "SELECT role, category, COUNT(*) AS n FROM feedback WHERE active = 1 AND signal = 'not_relevant' "
-        "GROUP BY role, category")}
+        "SELECT role, category, COUNT(*) AS n FROM feedback WHERE active = 1 AND signal = ? "
+        "GROUP BY role, category", (signal,))}
 
 
 def feedback_for(con, role, category):
     return [dict(r) for r in con.execute(
         "SELECT f.*, c.suggested_action FROM feedback f JOIN cards c ON c.id = f.card_id "
         "WHERE f.active = 1 AND f.role = ? AND f.category = ? ORDER BY f.id DESC", (role, category))]
+
+
+# ------------------------------------------------------------------ outcomes
+def add_outcome(con, card, check_on):
+    con.execute("INSERT OR IGNORE INTO outcomes (card_id, engagement_id, metric, baseline, check_on, at) "
+                "VALUES (?, ?, ?, ?, ?, ?)", (card["id"], card["engagement_id"], card.get("metric", ""),
+                                              card.get("baseline", ""), check_on, now()))
+
+
+def outcome(con, card_id):
+    r = con.execute("SELECT * FROM outcomes WHERE card_id = ?", (card_id,)).fetchone()
+    return dict(r) if r else None
+
+
+def set_outcome(con, card_id, result):
+    con.execute("UPDATE outcomes SET result = ?, at = ? WHERE card_id = ?", (result, now(), card_id))
+
+
+def outcomes(con, engagement_id):
+    return [dict(r) for r in con.execute("SELECT * FROM outcomes WHERE engagement_id = ?", (engagement_id,))]

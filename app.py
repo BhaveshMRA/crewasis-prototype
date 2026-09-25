@@ -4,6 +4,7 @@ Run:  streamlit run app.py
 LLM:  set OLLAMA_HOST / OLLAMA_MODEL (and OLLAMA_API_KEY for Ollama Cloud) before starting. See README.
 """
 import html
+import json
 import os
 import re
 
@@ -120,7 +121,7 @@ def state_pill(state: str) -> str:
 
 def by_pill(written_by: str, status: str = "passed", flag: str = "") -> str:
     if written_by != "llm":
-        return '<span class="pill by tpl">offline</span>'
+        return '<span class="pill by tpl">playbook rule · LLM skipped</span>'
     if status == "flagged" or flag:
         return '<span class="pill by bad">LLM · not verified</span>'
     if status == "repaired":
@@ -188,23 +189,16 @@ with st.sidebar:
         st.selectbox("Analysis", ids, key="eid", format_func=labels.get)
     role = st.selectbox("View the Team board as", engine.ROLES, key="role")
     st.divider()
-    st.markdown("**LLM (Ollama)**")
-    offline_env = os.environ.get("CREWASIS_OFFLINE") == "1"
-    use_llm = st.toggle("Use the LLM", value=not offline_env, key="use_llm",
-                        help="Off = templates only. The app works the same either way; the LLM only rewords.")
-    host = st.text_input("Host", os.environ.get("OLLAMA_HOST", llm_mod.DEFAULT_HOST), key="host",
-                         disabled=not use_llm)
-    model = st.text_input("Model", os.environ.get("OLLAMA_MODEL", llm_mod.DEFAULT_MODEL), key="model",
-                          disabled=not use_llm)
+    st.markdown("**Winston's LLM (Ollama)**")
+    host = st.text_input("Host", os.environ.get("OLLAMA_HOST", llm_mod.DEFAULT_HOST), key="host")
+    model = st.text_input("Model", os.environ.get("OLLAMA_MODEL", llm_mod.DEFAULT_MODEL), key="model")
     st.caption("API key: " + ("set from OLLAMA_API_KEY" if os.environ.get("OLLAMA_API_KEY") else
                               "not set (fine for a local Ollama)"))
-    client = llm_mod.OllamaLLM(con, host=host, model=model) if use_llm else None
-    if use_llm and st.button("Test connection"):
+    client = llm_mod.OllamaLLM(con, host=host, model=model)
+    if st.button("Test connection"):
         ok, msg = client.ping()
         (st.success if ok else st.error)(msg)
     st.divider()
-    simulate = st.checkbox("Simulate an LLM mistake", help="Pretends the LLM changed a number in the first finding, "
-                           "so you can watch the Check step catch it.")
     if st.button("Reset demo"):
         db.reset(con)
         engagement.clear()
@@ -216,7 +210,7 @@ eid = st.session_state.get("eid")
 e = engagement(eid) if eid else None
 if e is not None and not db.cards(con, engagement_id=e.id):
     workflow.seed(con, e)
-sentences = engine.with_simulated_mistake(e) if (e is not None and simulate) else (e.sentences if e else [])
+sentences = e.sentences if e else []
 
 if "flash" in st.session_state:
     st.warning(st.session_state.pop("flash"))
@@ -246,12 +240,17 @@ with tab_ask:
             except ValueError as ex:
                 st.error(str(ex))
             else:
-                with st.spinner("Planning, analysing and writing the brief" +
-                                (f" with {client.model} (this can take a minute)…" if client else "…")):
-                    new = engine.run(con, text, client, data)
-                    workflow.seed(con, new)
-                st.session_state["pending_eid"] = new.id
-                st.rerun()
+                try:
+                    with st.spinner(f"Winston's agents are planning, analysing and writing with {client.model} "
+                                    f"(this can take a minute)…"):
+                        new = engine.run(con, text, client, data, strict=True)
+                        workflow.seed(con, new)
+                except engine.LLMUnavailable as ex:
+                    st.error(f"**Winston couldn't complete the analysis.** {ex} Nothing was shown instead: check "
+                             f"**Test connection** in the sidebar and ask again.")
+                else:
+                    st.session_state["pending_eid"] = new.id
+                    st.rerun()
     if e is not None:
         st.success(f"Showing analysis #{e.id}. Open **② Brief** for the findings and **③ Team board** for the "
                    f"actions.")
@@ -277,7 +276,7 @@ with tab_brief:
         calls = db.llm_calls(con, e.id)
         failed = [c for c in calls if not c["ok"]]
         if e.llm_mode == "offline":
-            st.caption("Offline: the LLM is switched off, so the text is built directly from the facts.")
+            st.warning("This analysis was made without the LLM, so its text is data-built draft text.")
         elif failed and not any(s.written_by == "llm" for s in sentences):
             st.warning(f"The LLM ({e.llm_mode}) couldn't be reached (“{failed[-1]['error']}”), so this brief is built "
                        f"directly from the facts. Check the connection and run it again.")
@@ -319,6 +318,9 @@ with tab_brief:
                             f'{chips(engine.card_why(c, e))}</div></div>',
                             unsafe_allow_html=True)
 
+        if not e.root_causes:
+            st.subheader("Likely root causes")
+            st.caption("Winston didn't name root causes the facts support for this analysis.")
         if e.root_causes:
             st.subheader("Likely root causes")
             for i, r in enumerate(e.root_causes, 1):
@@ -327,8 +329,9 @@ with tab_brief:
                 st.markdown(f'{i}. **{html.escape(r["cause"])}** <span class="pill state {conf}">{r["confidence"]}'
                             f'</span> <span class="why">{fact_chips} · {r["rows"]:,} rows from {len(r["sources"])} '
                             f'source types</span>', unsafe_allow_html=True)
-            st.caption("Confidence is set by rule: High = 2+ source types with 30+ rows · Medium = 1 type with 30+ "
-                       "rows, or 2 types with fewer · Low = otherwise.")
+            st.caption("Winston names each cause and the facts behind it; code checks those facts and sets the "
+                       "confidence by rule: High = 2+ source types with 30+ rows · Medium = 1 type with 30+ rows, or 2 "
+                       "types with fewer · Low = otherwise.")
 
         st.subheader("Findings")
         if not f:
@@ -396,7 +399,7 @@ with tab_brief:
         st.subheader(f"All recommendations → {len(work)} cards on the Team board")
         if work:
             st.dataframe(pd.DataFrame([{"Owner": c["owner_role"], "Action": c["suggested_action"],
-                                        "Worded by": ("LLM" + (" (not verified)" if c["flag"] else "")) if c["written_by"] == "llm" else "offline", "From": c["play_id"] or c["fact_id"],
+                                        "Worded by": ("LLM" + (" (not verified)" if c["flag"] else "")) if c["written_by"] == "llm" else "Playbook rule (LLM skipped)", "From": c["play_id"] or c["fact_id"],
                                         "Needs approval": c["gate_rule"] or ""} for c in
                                        sorted(work, key=lambda c: -c["relevance_score"])]),
                          hide_index=True, width="stretch")
@@ -455,6 +458,12 @@ def render_card(c: dict):
                      f'not relevant. Only {c["owner_role"]}\'s ranking changed.</div>')
         if c["flag"]:
             banner += f'<div class="banner bad">LLM wording not verified: {html.escape(c["flag"])}</div>'
+        held = json.loads(c.get("held") or "[]")
+        if held:
+            banner += (f'<div class="banner warn">Evidence is thin, so {len(held)} action(s) are on hold until '
+                       f'{c["owner_role"]} confirms it: '
+                       + "; ".join(html.escape(f"{h['owner_role']}: {h['suggested_action']}") for h in held)
+                       + '</div>')
         st.markdown(f'{head}<div class="action">{html.escape(c["suggested_action"])}'
                     f'{by_pill(c["written_by"], flag=c["flag"])}</div>'
                     f'<div class="why">Why: {chips(engine.card_why(c, e))}</div>{note}{banner}',
@@ -464,31 +473,46 @@ def render_card(c: dict):
             if st.button("Restore", key=f"rs{c['id']}"):
                 act(workflow.restore, con, c["id"])
             return
-        b1, b2 = st.columns([1, 1])
-        if b2.button("Not relevant ×", key=f"nr{c['id']}", help="One tap: set this aside and rank similar cards "
-                     "lower for your team only. Other teams' rankings don't change."):
-            act(workflow.not_relevant, con, c["id"])
-        if c["state"] == "Surfaced":
-            if b1.button("Accept", key=f"acc{c['id']}"):
-                act(workflow.accept, con, c["id"])
-        elif c["state"] == "Drafted":
-            label = "Decide" if c["owner_role"] == "Strategy" else "Execute"
-            if workflow.can_execute(con, c):
-                if b1.button(label, key=f"ex{c['id']}", type="primary"):
-                    act(workflow.execute, con, c["id"])
-            else:
-                a = db.latest_approval(con, c["id"])
-                if a and a["state"] == "Rejected":
-                    if b1.button("Ask Strategy again", key=f"aa{c['id']}"):
-                        act(workflow.ask_again, con, c["id"])
+        if c["state"] == "Executed":
+            o = db.outcome(con, c["id"])
+            if o:
+                result = workflow.OUTCOMES.get(o["result"], "waiting for the result")
+                st.markdown(f'<div class="banner ok">Outcome to watch: <b>{html.escape(o["metric"])}</b> · baseline '
+                            f'{html.escape(o["baseline"])} · check on {o["check_on"]} · <b>{result}</b></div>',
+                            unsafe_allow_html=True)
+                if o["result"] == "waiting":
+                    o1, o2, o3 = st.columns(3)
+                    if o1.button("Improved", key=f"oi{c['id']}", width="stretch"):
+                        act(workflow.record_outcome, con, c["id"], "improved")
+                    if o2.button("No change", key=f"on{c['id']}", width="stretch"):
+                        act(workflow.record_outcome, con, c["id"], "no_change")
+                    if o3.button("Worse", key=f"ow{c['id']}", width="stretch"):
+                        act(workflow.record_outcome, con, c["id"], "worse")
+        else:
+            b1, b2 = st.columns([1, 1])
+            if b2.button("Not relevant ×", key=f"nr{c['id']}", help="One tap: set this aside and rank similar cards "
+                         "lower for your team only. Other teams' rankings don't change."):
+                act(workflow.not_relevant, con, c["id"])
+            if c["state"] == "Surfaced":
+                if b1.button("Accept", key=f"acc{c['id']}"):
+                    act(workflow.accept, con, c["id"])
+            elif c["state"] == "Drafted":
+                label = ("Confirm evidence" if held else "Decide" if c["owner_role"] == "Strategy" else "Execute")
+                if workflow.can_execute(con, c):
+                    if b1.button(label, key=f"ex{c['id']}", type="primary"):
+                        act(workflow.execute, con, c["id"])
                 else:
-                    b1.button("Awaiting Strategy approval", key=f"ex{c['id']}", disabled=True)
-        if c["state"] != "Executed":
+                    a = db.latest_approval(con, c["id"])
+                    if a and a["state"] == "Rejected":
+                        if b1.button("Ask Strategy again", key=f"aa{c['id']}"):
+                            act(workflow.ask_again, con, c["id"])
+                    else:
+                        b1.button("Awaiting Strategy approval", key=f"ex{c['id']}", disabled=True)
             h1, h2 = st.columns([2, 1])
             to = h1.selectbox("Hand off to", [r for r in engine.ROLES if r != c["owner_role"]],
                               key=f"to{c['id']}", label_visibility="collapsed")
             if h2.button("Hand off", key=f"ho{c['id']}", width="stretch"):
-                with st.spinner("Re-wording for the new team…" if client else "Handing off…"):
+                with st.spinner("Re-wording for the new team…"):
                     act(workflow.handoff, con, c["id"], to, e, client)
         with st.expander("Show source & score"):
             fact = e.facts.get(c["fact_id"])
@@ -525,6 +549,7 @@ with tab_board:
         m = workflow.metrics(con, e, sentences)
         st.markdown(tiles([(m["Executed"], "executed"), (m["In progress"], "in progress"),
                            (m["Awaiting approval"], "awaiting approval"), (m["Not relevant"], "marked not relevant"),
+                           (m["Outcomes logged"], "outcomes logged"),
                            (m["Avg hand-offs to execution"], "avg hand-offs to execution")], accent_first=True),
                     unsafe_allow_html=True)
         counts = db.feedback_counts(con)

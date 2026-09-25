@@ -160,5 +160,5 @@ def test_full_run_through_stub_ollama(ollama, con, data):
 def test_run_survives_ollama_being_down(con, data):
     client = OllamaLLM(con, host="http://127.0.0.1:9", api_key="", timeout=2)
     e = engine.run(con, engine.DEMO_PROBLEM, client, data)
-    assert len(e.cards) == 14 and all(s.written_by == "template" for s in e.sentences)
+    assert len(e.cards) == 13 and all(s.written_by == "template" for s in e.sentences if s.key != "summary")
     assert [c["ok"] for c in db.llm_calls(con, e.id)] == [0, 0, 0]

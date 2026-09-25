@@ -120,7 +120,8 @@ def test_offline_trace_names_every_agent(con, board):
     rows = db.trace(con, board.id)
     agents = [r["agent"] for r in rows]
     assert agents[0] == "Planner" and "Analyst" in agents and "Playbook" in agents
-    assert agents[-3:] == ["Router", "Framer", "Governance"]
+    assert agents[-4:] == ["Router", "Framer", "Governance", "Governance"]  # ... hold thin evidence, then gate
+    assert "evidence too thin" in rows[-2]["action"] and rows[-2]["evidence"] == ["F6"]
     assert all(r["kind"] == "code" for r in rows)  # no LLM in this run
     gate = rows[-1]
     assert "4 action(s) to Strategy" in gate["action"] and set(gate["evidence"]) == {"F3", "PL3", "PL8", "PL9"}
@@ -152,3 +153,69 @@ def test_human_moves_and_handoffs_are_traced(con, board):
 def test_trace_survives_reload(con, data, board):
     again = engine.load_engagement(con, board.id, data)
     assert [r["action"] for r in again.trace] == [r["action"] for r in board.trace]
+
+
+# ---------------------------------------------------------------- 4 · thin evidence is held
+def test_confirming_evidence_releases_the_held_actions(con, board):
+    v = next(c for c in cards(con, board, "Insights") if c["fact_id"] == "F6")
+    assert "Confirm" not in v["suggested_action"] and v["held"] != "[]"
+    workflow.accept(con, v["id"])
+    workflow.execute(con, v["id"])
+    released = [(c["owner_role"], c["play_id"] or c["fact_id"], c["state"]) for c in cards(con, board)
+                if c["fact_id"] == "F6" and c["id"] != v["id"]]
+    assert released == [("R&D", "F6", "Surfaced"), ("Strategy", "PL6", "Surfaced")]
+    assert db.card(con, v["id"])["held"] == "[]"
+    assert "released 2 held action(s)" in db.trace(con, board.id)[-1]["action"]
+
+
+def test_dropping_thin_evidence_keeps_the_actions_held(con, board):
+    v = next(c for c in cards(con, board, "Insights") if c["fact_id"] == "F6")
+    workflow.not_relevant(con, v["id"])  # "choose not to act"
+    assert not any(c["owner_role"] == "R&D" and c["fact_id"] == "F6" for c in cards(con, board))
+
+
+# ---------------------------------------------------------------- 5 · outcomes
+def test_executing_records_an_outcome_to_check(con, board):
+    c = card(con, board, "PL2")
+    workflow.accept(con, c["id"])
+    workflow.execute(con, c["id"])
+    o = db.outcome(con, c["id"])
+    assert o["metric"] == "on-time reorder rate" and o["baseline"] == "58% (F10)"
+    assert o["check_on"] == "2026-10-24" and o["result"] == "waiting"
+
+
+def test_approval_also_records_an_outcome(con, board):
+    c = card(con, board, "F3")
+    workflow.approve(con, db.open_approval(con, c["id"])["id"])
+    assert db.outcome(con, c["id"])["result"] == "waiting"
+
+
+@pytest.mark.parametrize("result, multiplier", [("improved", 1.1), ("worse", 0.9), ("no_change", 1.0)])
+def test_logged_outcomes_teach_that_team(con, board, result, multiplier):
+    c = card(con, board, "PL2")
+    workflow.accept(con, c["id"])
+    workflow.execute(con, c["id"])
+    workflow.record_outcome(con, c["id"], result)
+    assert db.outcome(con, c["id"])["result"] == result
+    assert workflow.learned_multiplier(con, "Marketing", "retention") == pytest.approx(multiplier)
+    assert workflow.learned_multiplier(con, "Strategy", "retention") == 1.0  # other teams untouched
+    assert workflow.metrics(con, board)["Outcomes logged"] == 1
+
+
+def test_outcome_illegal_moves(con, board):
+    c = card(con, board, "PL2")
+    with pytest.raises(InvalidMove):
+        workflow.record_outcome(con, c["id"], "improved")  # not executed yet
+    workflow.accept(con, c["id"])
+    workflow.execute(con, c["id"])
+    with pytest.raises(InvalidMove):
+        workflow.record_outcome(con, c["id"], "amazing")
+    workflow.record_outcome(con, c["id"], "improved")
+    with pytest.raises(InvalidMove):
+        workflow.record_outcome(con, c["id"], "worse")  # already logged
+
+
+def test_learning_is_capped(con, board):
+    for _ in range(10):
+        db.add_feedback(con, card(con, board, "PL2"), "improved")
+    assert workflow.learned_multiplier(con, "Marketing", "retention") == workflow.LEARN_CEILING

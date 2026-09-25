@@ -63,6 +63,9 @@ def test_key_numbers_match_the_readme(demo):
 def test_every_cited_id_exists(demo):
     known = set(demo.facts) | set(demo.rows)
     for s in demo.sentences:
+        if s.key == "summary":
+            assert s.status == "missing" and s.text == ""  # only the LLM writes the summary
+            continue
         assert s.status == "passed", (s.key, s.problem)
         assert all(i in known for i in engine.CITATION.findall(s.text))
     for f in demo.facts.values():
@@ -75,7 +78,7 @@ def test_playbook_matches_eight_of_nine(demo):
 
 
 def test_cards_and_gates(demo):
-    assert len(demo.cards) == 14
+    assert len(demo.cards) == 13
     gated = {c["play_id"] or c["fact_id"]: c["gate_rule"] for c in demo.cards if c["gate_rule"]}
     assert gated == {"F3": "Customer-facing claim", "PL3": "Price change", "PL8": "Customer-facing claim",
                      "PL9": "Customer-facing claim"}
@@ -84,8 +87,17 @@ def test_cards_and_gates(demo):
     assert "PL1" in f1["note"]  # "fix why they leave" merged into the texture card
 
 
-def test_root_causes_rank_texture_first(demo):
-    assert demo.root_causes[0]["cause"].startswith("Bar texture") and demo.root_causes[0]["confidence"] == "High"
+def test_no_llm_means_no_summary_and_no_root_causes(demo):
+    """Without the LLM nothing narrative is invented: no summary, no root causes."""
+    assert demo.root_causes == []
+    assert next(s for s in demo.sentences if s.key == "summary").status == "missing"
+
+
+def test_thin_evidence_is_held_for_insights(con, demo):
+    v = next(c for c in demo.cards if c["fact_id"] == "F6")
+    assert v["owner_role"] == "Insights" and "only 6 observations" in v["suggested_action"]
+    assert [(h["owner_role"], h["play_id"] or h["fact_id"]) for h in v["held"]] == [("R&D", "F6"), ("Strategy", "PL6")]
+    assert not any(c["fact_id"] == "F6" and c["owner_role"] == "R&D" for c in demo.cards)
 
 
 # ---------------------------------------------------------------- edge cases in the engine
@@ -112,7 +124,7 @@ def test_whey_question_reports_gaps_instead_of_guessing(con, data):
     assert round(e.facts["F14"].magnitude, 3) == 0.091
     assert any("No whey reviews" in g for g in e.gaps) and any("No whey orders" in g for g in e.gaps)
     assert all(not p.checked for p in e.plays if p.id in ("PL1", "PL2", "PL3", "PL4", "PL5", "PL6", "PL7"))
-    assert all(s.status == "passed" for s in e.sentences)
+    assert all(s.status == "passed" for s in e.sentences if s.key != "summary")
 
 
 @pytest.mark.parametrize("lenses, expected", [
@@ -127,7 +139,7 @@ def test_each_lens_alone(data, lenses, expected):
     e = engine.analyse(data, "x", {"lenses": lenses, "products": ["bar"]})
     assert set(e.facts) == expected
     engine.initial_cards(e)  # never crashes on a partial set of facts
-    assert all(s.status == "passed" for s in e.sentences)
+    assert all(s.status == "passed" for s in e.sentences if s.key != "summary")
 
 
 def test_empty_plan_gives_empty_but_valid_brief(data):
@@ -170,11 +182,9 @@ def test_number_check_normalises_formats(demo):
     assert not engine.check_numbers("It was 2689 people [R071]", f, rows)[0]
 
 
-def test_simulated_mistake_is_caught(demo):
-    sents = engine.with_simulated_mistake(demo)
-    bad = [s for s in sents if s.status == "flagged"]
-    assert len(bad) == 1 and "isn't in the cited facts" in bad[0].problem
-    assert bad[0].text != bad[0].template and bad[0].written_by == "llm"  # shown as written, flagged
+def test_strict_mode_refuses_to_run_without_the_llm(con, data):
+    with pytest.raises(engine.LLMUnavailable):
+        engine.run(con, engine.DEMO_PROBLEM, None, data, strict=True)
 
 
 def test_saved_engagement_reloads_identically(con, data, demo):
