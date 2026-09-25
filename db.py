@@ -82,6 +82,24 @@ CREATE TABLE IF NOT EXISTS card_events (
     from_role TEXT, to_role TEXT, from_state TEXT, to_state TEXT,
     at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS agent_trace (
+    id INTEGER PRIMARY KEY,
+    engagement_id INTEGER NOT NULL REFERENCES engagements(id),
+    agent TEXT NOT NULL,                -- Planner · Analyst · Playbook · Writer · Governance · Router · Framer
+    kind TEXT NOT NULL,                 -- llm · code
+    action TEXT NOT NULL, detail TEXT DEFAULT '', evidence TEXT DEFAULT '[]',
+    at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY,
+    card_id INTEGER NOT NULL REFERENCES cards(id),
+    engagement_id INTEGER,
+    role TEXT NOT NULL,                 -- the team that gave the feedback; only its ranking learns from it
+    category TEXT NOT NULL,
+    signal TEXT NOT NULL,               -- not_relevant
+    active INTEGER NOT NULL DEFAULT 1,  -- 0 once undone
+    at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS llm_cache (
     key TEXT PRIMARY KEY, response TEXT NOT NULL, created_at TEXT NOT NULL
 );
@@ -147,9 +165,9 @@ def ensure_seeded(con, data_dir: Path = DATA) -> dict:
 
 def reset(con):
     """Clear every engagement and card; keep the loaded evidence and the LLM cache."""
-    con.executescript("DELETE FROM card_events; DELETE FROM cards; DELETE FROM brief_sections; "
-                      "DELETE FROM play_matches; DELETE FROM facts; DELETE FROM engagements; "
-                      "DELETE FROM llm_calls;")
+    con.executescript("DELETE FROM card_events; DELETE FROM feedback; DELETE FROM agent_trace; DELETE FROM cards; "
+                      "DELETE FROM brief_sections; DELETE FROM play_matches; DELETE FROM facts; "
+                      "DELETE FROM engagements; DELETE FROM llm_calls;")
     con.commit()
 
 
@@ -286,3 +304,45 @@ def llm_calls(con, engagement_id=None):
     if engagement_id is not None:
         q, args = q + " WHERE engagement_id = ?", (engagement_id,)
     return [dict(r) for r in con.execute(q + " ORDER BY id", args)]
+
+
+# ------------------------------------------------------------------ agent trace
+def add_trace(con, eid, rows):
+    con.executemany("INSERT INTO agent_trace (engagement_id, agent, kind, action, detail, evidence, at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    [(eid, r["agent"], r["kind"], r["action"], r.get("detail", ""),
+                      json.dumps(r.get("evidence", [])), now()) for r in rows])
+
+
+def trace(con, eid):
+    out = []
+    for r in con.execute("SELECT * FROM agent_trace WHERE engagement_id = ? ORDER BY id", (eid,)):
+        d = dict(r)
+        d["evidence"] = json.loads(d["evidence"] or "[]")
+        out.append(d)
+    return out
+
+
+# ------------------------------------------------------------------ feedback (the learning loop)
+def add_feedback(con, card, signal="not_relevant") -> int:
+    cur = con.execute("INSERT INTO feedback (card_id, engagement_id, role, category, signal, at) "
+                      "VALUES (?, ?, ?, ?, ?, ?)",
+                      (card["id"], card["engagement_id"], card["owner_role"], card["category"], signal, now()))
+    return cur.lastrowid
+
+
+def undo_feedback(con, card_id):
+    con.execute("UPDATE feedback SET active = 0 WHERE card_id = ? AND active = 1", (card_id,))
+
+
+def feedback_counts(con) -> dict:
+    """{(role, category): number of active 'not relevant' taps}, across every analysis."""
+    return {(r["role"], r["category"]): r["n"] for r in con.execute(
+        "SELECT role, category, COUNT(*) AS n FROM feedback WHERE active = 1 AND signal = 'not_relevant' "
+        "GROUP BY role, category")}
+
+
+def feedback_for(con, role, category):
+    return [dict(r) for r in con.execute(
+        "SELECT f.*, c.suggested_action FROM feedback f JOIN cards c ON c.id = f.card_id "
+        "WHERE f.active = 1 AND f.role = ? AND f.category = ? ORDER BY f.id DESC", (role, category))]

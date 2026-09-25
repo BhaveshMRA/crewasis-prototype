@@ -1,4 +1,4 @@
-"""CREWASIS · FDE in a Box — Streamlit demo.
+"""CREWASIS · Winston: from answer to action — Streamlit demo.
 
 Run:  streamlit run app.py
 LLM:  set OLLAMA_HOST / OLLAMA_MODEL (and OLLAMA_API_KEY for Ollama Cloud) before starting. See README.
@@ -16,13 +16,14 @@ import llm as llm_mod
 import workflow
 from engine import pct
 
-st.set_page_config(page_title="CREWASIS · FDE in a Box", page_icon="🧭", layout="wide")
+st.set_page_config(page_title="CREWASIS · Winston", page_icon="🧭", layout="wide")
 
 LENS_TITLES = {"product": "Where the product is failing", "competitor": "Competitors", "customer": "Customer discovery",
                "channel": "Channels", "retention": "Retention", "community": "Where buyers talk"}
-TEAM_CLASS = {"Marketing": "mkt", "Insights": "ins", "R&D": "rnd", "Strategy": "str"}
+TEAM_CLASS = {"Marketing": "mkt", "Insights": "ins", "R&D": "rnd", "Innovation": "inn", "Strategy": "str"}
 STATE_CLASS = {"Surfaced": "surfaced", "Drafted": "drafted", "Executed": "done", "Pending approval": "pending",
-               "Approved": "done", "Rejected": "rejected", "Withdrawn": "withdrawn"}
+               "Approved": "done", "Rejected": "rejected", "Withdrawn": "withdrawn", "Dismissed": "withdrawn"}
+KIND_CLASS = {"llm": "llm", "code": "code", "human": "human"}
 
 st.markdown("""
 <style>
@@ -30,7 +31,14 @@ st.markdown("""
       line-height:1.5;white-space:nowrap}
 .team{color:#fff}
 .team.mkt{background:#7D66EC}.team.ins{background:#0284C7}.team.rnd{background:#059669}
-.team.str{background:#F59E0B;color:#1A1825}
+.team.str{background:#F59E0B;color:#1A1825}.team.inn{background:#DB2777}
+.agent{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700;margin-right:6px}
+.agent.llm{background:#7D66EC;color:#fff}.agent.code{background:#334155;color:#fff}
+.agent.human{background:#F59E0B;color:#1A1825}
+.tstep{border-left:2px solid rgba(128,128,128,.3);padding:2px 0 10px 14px;margin-left:6px}
+.roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:6px 0 16px}
+.roster div{border:1px solid rgba(128,128,128,.25);border-radius:10px;padding:8px 12px;font-size:.85rem}
+.learned{font-size:.78rem;color:#B45309;margin-top:4px}
 .state{border:1.5px solid currentColor;background:transparent}
 .state.surfaced{color:#0284C7}.state.drafted{color:#7D66EC}.state.done{color:#059669}
 .state.pending{color:#D97706}.state.rejected{color:#DC2626}.state.withdrawn{color:#9CA3AF}
@@ -169,7 +177,7 @@ if "pending_eid" in st.session_state:
     st.session_state["eid"] = st.session_state.pop("pending_eid")
 
 with st.sidebar:
-    st.markdown("## CREWASIS\n**FDE in a Box** · demo")
+    st.markdown("## CREWASIS\n**Winston** · from answer to action")
     past = [x for x in db.engagements(con) if x["status"] == "done"]
     if past:
         labels = {x["id"]: f"#{x['id']} · {x['problem'][:42]}{'…' if len(x['problem']) > 42 else ''}" for x in past}
@@ -213,13 +221,14 @@ sentences = engine.with_simulated_mistake(e) if (e is not None and simulate) els
 if "flash" in st.session_state:
     st.warning(st.session_state.pop("flash"))
 
-tab_ask, tab_brief, tab_board = st.tabs(["① Ask the FDE", "② Brief", "③ Team board"])
+tab_ask, tab_brief, tab_board, tab_trace = st.tabs(["① Ask Winston", "② Brief", "③ Team board", "④ Agent trace"])
 
-# ------------------------------------------------------------ ① Ask the FDE
+# ------------------------------------------------------------ ① Ask Winston
 with tab_ask:
-    st.header("Ask the FDE")
-    st.markdown('<div class="lead">Describe a business problem. The FDE plans which lenses to use, reads '
-                'reviews, social posts, competitor data, sales and orders, and works out what is going wrong.</div>',
+    st.header("Ask Winston")
+    st.markdown('<div class="lead">Winston today answers questions. Here it takes the next step: its agents plan '
+                'the analysis, read reviews, social posts, competitor data, sales and orders, check every claim '
+                'against the data, and hand each team its next action, with a person approving anything risky.</div>',
                 unsafe_allow_html=True)
     c1, c2 = st.columns([1, 2], gap="large")
     with c1:
@@ -231,7 +240,7 @@ with tab_ask:
         text = st.text_area("Describe the business problem in plain words", engine.DEMO_PROBLEM, height=110,
                             max_chars=engine.MAX_PROBLEM_CHARS)
         st.caption("Try also: “Why is our whey not selling?” or “Are we losing customers to competitors?”")
-        if st.button("Run the FDE", type="primary"):
+        if st.button("Ask Winston", type="primary"):
             try:
                 engine.clean_problem(text)
             except ValueError as ex:
@@ -255,7 +264,7 @@ with tab_ask:
 # ------------------------------------------------------------------ ② Brief
 with tab_brief:
     if e is None:
-        st.info("Run the FDE first (tab ①).")
+        st.info("Ask Winston first (tab ①).")
     else:
         f = e.facts
         verified = sum(s.status in ("passed", "repaired") for s in sentences)
@@ -414,8 +423,9 @@ with tab_brief:
 def render_card(c: dict):
     with st.container(border=True):
         tag = c["play_id"] or c["fact_id"]
+        rank = workflow.ranking(con, c, counts)
         head = (f'{team_pill(c["owner_role"])}{state_pill(c["state"])}<span class="pill tag">{tag}</span>'
-                f'<span class="score">{c["relevance_score"]:.2f} <small>relevance</small></span>')
+                f'<span class="score">{rank:.2f} <small>relevance</small></span>')
         if c["kind"] == "approval":
             st.markdown(f'{head}<div class="action">Approve this?</div>'
                         f'<div class="why">{html.escape(c["evidence"])}</div>'
@@ -438,6 +448,11 @@ def render_card(c: dict):
                          "Rejected": ("bad", "Rejected by Strategy: revise or hand off")}.get(state, ("warn", ""))
             banner = f'<div class="banner {kind}">{msg} · {html.escape(c["gate_rule"])}</div>'
         note = f'<div class="note">{chips(c["note"])}</div>' if c["note"] else ""
+        n_taps = counts.get((c["owner_role"], c["category"]), 0)
+        if n_taps and c["state"] != "Dismissed":
+            note += (f'<div class="learned">↓ Ranked lower ({c["relevance_score"]:.2f} → {rank:.2f}) after '
+                     f'{c["owner_role"]} marked {n_taps} similar {c["category"]} card{"s" if n_taps > 1 else ""} '
+                     f'not relevant. Only {c["owner_role"]}\'s ranking changed.</div>')
         if c["flag"]:
             banner += f'<div class="banner bad">LLM wording not verified: {html.escape(c["flag"])}</div>'
         st.markdown(f'{head}<div class="action">{html.escape(c["suggested_action"])}'
@@ -445,21 +460,29 @@ def render_card(c: dict):
                     f'<div class="why">Why: {chips(engine.card_why(c, e))}</div>{note}{banner}',
                     unsafe_allow_html=True)
 
+        if c["state"] == "Dismissed":
+            if st.button("Restore", key=f"rs{c['id']}"):
+                act(workflow.restore, con, c["id"])
+            return
+        b1, b2 = st.columns([1, 1])
+        if b2.button("Not relevant ×", key=f"nr{c['id']}", help="One tap: set this aside and rank similar cards "
+                     "lower for your team only. Other teams' rankings don't change."):
+            act(workflow.not_relevant, con, c["id"])
         if c["state"] == "Surfaced":
-            if st.button("Accept", key=f"acc{c['id']}"):
+            if b1.button("Accept", key=f"acc{c['id']}"):
                 act(workflow.accept, con, c["id"])
         elif c["state"] == "Drafted":
             label = "Decide" if c["owner_role"] == "Strategy" else "Execute"
             if workflow.can_execute(con, c):
-                if st.button(label, key=f"ex{c['id']}", type="primary"):
+                if b1.button(label, key=f"ex{c['id']}", type="primary"):
                     act(workflow.execute, con, c["id"])
             else:
                 a = db.latest_approval(con, c["id"])
                 if a and a["state"] == "Rejected":
-                    if st.button("Ask Strategy again", key=f"aa{c['id']}"):
+                    if b1.button("Ask Strategy again", key=f"aa{c['id']}"):
                         act(workflow.ask_again, con, c["id"])
                 else:
-                    st.button("Awaiting Strategy approval", key=f"ex{c['id']}", disabled=True)
+                    b1.button("Awaiting Strategy approval", key=f"ex{c['id']}", disabled=True)
         if c["state"] != "Executed":
             h1, h2 = st.columns([2, 1])
             to = h1.selectbox("Hand off to", [r for r in engine.ROLES if r != c["owner_role"]],
@@ -473,11 +496,14 @@ def render_card(c: dict):
                 st.write("The fact behind this card isn't in the current analysis.")
                 return
             w = engine.WEIGHTS[c["category"]][c["owner_role"]]
+            learned = workflow.learned_multiplier(con, c["owner_role"], c["category"], counts)
             st.code(f"base = magnitude × (1 + change/100) × confidence\n"
                     f"     = {fact.magnitude:.3f} × (1 + {fact.change_pct:.1f}/100) × {fact.confidence:.2f}"
                     f" = {c['base']:.3f}\n"
-                    f"relevance = base × weight[{c['category']}][{c['owner_role']}]\n"
-                    f"          = {c['base']:.3f} × {w} = {c['relevance_score']:.3f}", language=None)
+                    f"relevance = base × weight[{c['category']}][{c['owner_role']}] × learned[{c['owner_role']}]\n"
+                    f"          = {c['base']:.3f} × {w} × {learned:.2f} = {c['relevance_score'] * learned:.3f}\n"
+                    f"learned = {workflow.LEARN_RATE} ^ (\"not relevant\" taps by {c['owner_role']} on "
+                    f"{c['category']} cards), min {workflow.LEARN_FLOOR}", language=None)
             show_fact(e, fact.id)
             ev = pd.DataFrame(db.events(con, c["id"]))
             if not ev.empty:
@@ -488,7 +514,7 @@ def render_card(c: dict):
 
 with tab_board:
     if e is None:
-        st.info("Run the FDE first (tab ①).")
+        st.info("Ask Winston first (tab ①).")
     else:
         st.header(f"Team board · {role}")
         lead = ("Approvals waiting for you come first. Approving runs the action; rejecting sends it back."
@@ -498,11 +524,14 @@ with tab_board:
         st.markdown(f'<div class="lead">{lead} Switch team in the sidebar.</div>', unsafe_allow_html=True)
         m = workflow.metrics(con, e, sentences)
         st.markdown(tiles([(m["Executed"], "executed"), (m["In progress"], "in progress"),
-                           (m["Awaiting approval"], "awaiting approval"), (m["Cards"], "cards in total"),
+                           (m["Awaiting approval"], "awaiting approval"), (m["Not relevant"], "marked not relevant"),
                            (m["Avg hand-offs to execution"], "avg hand-offs to execution")], accent_first=True),
                     unsafe_allow_html=True)
-        mine = [c for c in db.cards(con, "work", e.id) if c["owner_role"] == role]
-        mine.sort(key=lambda c: (c["state"] == "Executed", -c["relevance_score"]))
+        counts = db.feedback_counts(con)
+        allmine = [c for c in db.cards(con, "work", e.id) if c["owner_role"] == role]
+        dismissed = [c for c in allmine if c["state"] == "Dismissed"]
+        mine = [c for c in allmine if c["state"] != "Dismissed"]
+        mine.sort(key=lambda c: (c["state"] == "Executed", -workflow.ranking(con, c, counts)))
         if role == "Strategy":
             pending = [a for a in db.cards(con, "approval", e.id) if a["state"] == "Pending approval"]
             pending.sort(key=lambda c: -c["relevance_score"])
@@ -513,3 +542,33 @@ with tab_board:
         for i, c in enumerate(mine):
             with cols[i % 2]:
                 render_card(c)
+        if dismissed:
+            with st.expander(f"Marked not relevant by {role} ({len(dismissed)})"):
+                for c in dismissed:
+                    render_card(c)
+
+# ------------------------------------------------------------- ④ Agent trace
+with tab_trace:
+    if e is None:
+        st.info("Ask Winston first (tab ①).")
+    else:
+        st.header("Agent trace")
+        st.markdown('<div class="lead">Which agent acted, what it did and on what evidence. LLM agents plan and '
+                    'write; code agents calculate, check, route and gate; people approve.</div>',
+                    unsafe_allow_html=True)
+        st.markdown('<div class="roster">' + "".join(
+            f'<div><span class="agent {kind}">{name}</span>{"LLM" if kind == "llm" else "code"}<br>'
+            f'<span class="why">{html.escape(job)}</span></div>' for name, (kind, job) in engine.AGENTS.items())
+            + '<div><span class="agent human">People</span>each team<br><span class="why">Accept, execute, hand '
+              'off, mark not relevant; Strategy approves or rejects</span></div></div>', unsafe_allow_html=True)
+        st.caption("Flow: Planner → Analyst → Playbook → Writer ⇄ Governance → Router → Framer ⇄ Governance → "
+                   "Strategy approves → action runs → the team's feedback teaches the Router")
+        rows = db.trace(con, e.id)
+        if not rows:
+            st.info("No trace for this analysis (it was created before the trace existed).")
+        for r in rows:
+            ev = chips(" ".join(f"[{x}]" for x in r["evidence"] if x)) if r["evidence"] else ""
+            detail = f'<div class="why">{html.escape(r["detail"])}</div>' if r["detail"] else ""
+            st.markdown(f'<div class="tstep"><span class="agent {KIND_CLASS.get(r["kind"], "code")}">'
+                        f'{html.escape(r["agent"])}</span><b>{html.escape(r["action"])}</b> {ev}{detail}</div>',
+                        unsafe_allow_html=True)

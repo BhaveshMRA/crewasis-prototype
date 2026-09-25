@@ -25,7 +25,7 @@ DATA = Path(__file__).parent / "data"
 AS_OF = date(2026, 9, 24)
 QUARTERS = {"last": (date(2026, 4, 1), date(2026, 6, 30)), "this": (date(2026, 7, 1), date(2026, 9, 24))}
 Q_MONTHS = {"last": ["2026-04", "2026-05", "2026-06"], "this": ["2026-07", "2026-08", "2026-09"]}
-ROLES = ["Marketing", "Insights", "R&D", "Strategy"]
+ROLES = ["Marketing", "Insights", "R&D", "Innovation", "Strategy"]  # the five teams CREWASIS serves
 LENSES = ["product", "competitor", "customer", "channel", "retention", "community"]
 LENS_HELP = {
     "product": "where the product is failing: complaint themes in 1–2★ reviews",
@@ -50,6 +50,7 @@ BRAND_PROFILE = {
 DEMO_PROBLEM = ("Online sales of our protein bars fell 20% this quarter, and repeat purchase dropped from "
                 "38% to 29%. Why, and what should we do?")
 ROLE_JOBS = {"Insights": "check the signal is real", "Marketing": "shape what customers see",
+             "Innovation": "spot new product and whitespace opportunities",
              "R&D": "shape the product", "Strategy": "decide on money and direction"}
 
 
@@ -619,14 +620,14 @@ def run_playbook(f: dict, fatigue: dict) -> list[Play]:
 
 # ------------------------------------------------------------- scoring
 WEIGHTS = {
-    "product":     {"Marketing": 0.9, "Insights": 1.0, "R&D": 1.3, "Strategy": 1.0},
-    "packaging":   {"Marketing": 0.9, "Insights": 1.0, "R&D": 1.3, "Strategy": 1.0},
-    "pricing":     {"Marketing": 1.0, "Insights": 1.0, "R&D": 0.7, "Strategy": 1.3},
-    "positioning": {"Marketing": 1.3, "Insights": 1.1, "R&D": 0.8, "Strategy": 1.1},
-    "customer":    {"Marketing": 1.2, "Insights": 1.3, "R&D": 0.9, "Strategy": 1.0},
-    "channel":     {"Marketing": 1.2, "Insights": 1.1, "R&D": 0.7, "Strategy": 1.2},
-    "retention":   {"Marketing": 1.3, "Insights": 1.0, "R&D": 0.9, "Strategy": 1.2},
-    "community":   {"Marketing": 1.3, "Insights": 1.1, "R&D": 0.7, "Strategy": 1.0},
+    "product":     {"Marketing": 0.9, "Insights": 1.0, "R&D": 1.3, "Innovation": 1.0, "Strategy": 1.0},
+    "packaging":   {"Marketing": 0.9, "Insights": 1.0, "R&D": 1.3, "Innovation": 0.9, "Strategy": 1.0},
+    "pricing":     {"Marketing": 1.0, "Insights": 1.0, "R&D": 0.7, "Innovation": 0.8, "Strategy": 1.3},
+    "positioning": {"Marketing": 1.3, "Insights": 1.1, "R&D": 0.8, "Innovation": 1.0, "Strategy": 1.1},
+    "customer":    {"Marketing": 1.2, "Insights": 1.3, "R&D": 0.9, "Innovation": 1.3, "Strategy": 1.0},
+    "channel":     {"Marketing": 1.2, "Insights": 1.1, "R&D": 0.7, "Innovation": 0.8, "Strategy": 1.2},
+    "retention":   {"Marketing": 1.3, "Insights": 1.0, "R&D": 0.9, "Innovation": 0.8, "Strategy": 1.2},
+    "community":   {"Marketing": 1.3, "Insights": 1.1, "R&D": 0.7, "Innovation": 1.1, "Strategy": 1.0},
 }
 
 
@@ -746,6 +747,7 @@ class Engagement:
     cards: list = field(default_factory=list)
     id: int | None = None
     llm_mode: str = "offline"
+    trace: list = field(default_factory=list)
 
 
 ROOT_CAUSES = [
@@ -1055,40 +1057,49 @@ FACT_ACTIONS = {  # fact → role → action, worded for that team's job (templa
     "F1": {"R&D": "Test a softer bar base to cut chalky-texture complaints.",
            "Marketing": "Draft a post announcing the softer recipe once R&D signs it off.",
            "Insights": "Validate the texture spike by reading this quarter's 1–2★ reviews by channel.",
-           "Strategy": "Decide whether to fund a recipe change for the bar."},
+           "Strategy": "Decide whether to fund a recipe change for the bar.",
+           "Innovation": "Explore a new bar format with a softer texture, such as a baked bar."},
     "F2": {"Strategy": "Decide whether to close the price-per-gram gap with the cheapest rival bar.",
            "Marketing": "Draft pack copy that shows value per gram of protein.",
            "Insights": "Check whether marketplace buyers who left compared prices with rival bars.",
-           "R&D": "Cost out a bar with the same protein at a lower ingredient cost."},
+           "R&D": "Cost out a bar with the same protein at a lower ingredient cost.",
+           "Innovation": "Explore a value pack that lowers the price per gram of protein."},
     "F3": {"Marketing": "Draft Instagram posts that lead with ProForge's 2 g of sugar per bar.",
            "Insights": "Validate how often buyers ask about sugar before they buy.",
            "R&D": "Confirm whether the bar qualifies for a “no added sugar” label claim.",
-           "Strategy": "Decide whether to reposition the bar around low sugar."},
+           "Strategy": "Decide whether to reposition the bar around low sugar.",
+           "Innovation": "Explore a zero-added-sugar bar line."},
     "F4": {"Insights": "Validate the plant-protein request spike against vegetarian buyers' reviews.",
            "R&D": "Scope a plant-protein bar prototype.",
            "Marketing": "Ask followers in a story poll which plant-protein flavour they want.",
-           "Strategy": "Decide whether to fund a plant-protein bar."},
+           "Strategy": "Decide whether to fund a plant-protein bar.",
+           "Innovation": "Scope a plant-protein bar concept for vegetarian buyers."},
     "F5": {"Marketing": "Pitch ProForge to the quick-commerce apps where competitors already sell.",
            "Strategy": "Decide whether ProForge should be on quick-commerce apps.",
            "Insights": "Find out whether marketplace buyers moved to quick-commerce apps.",
-           "R&D": "Check the bar's shelf life under quick-commerce storage conditions."},
+           "R&D": "Check the bar's shelf life under quick-commerce storage conditions.",
+           "Innovation": "Explore a smaller pack sized for quick-commerce orders."},
     "F6": {"R&D": "Trial a foil-lined wrapper that survives heat in transit.",
            "Strategy": "Decide whether to use heat-safe shipping in summer months.",
            "Marketing": "Add a storage-care note to the order confirmation email.",
-           "Insights": "Check which cities and months the melted-bar complaints come from."},
+           "Insights": "Check which cities and months the melted-bar complaints come from.",
+           "Innovation": "Explore heat-stable bar formats for summer delivery."},
     "F14": {"Strategy": "Decide whether to close the whey price-per-gram gap with the cheapest rival.",
             "Marketing": "Draft pack copy that shows the whey's value per gram of protein.",
             "Insights": "Check whether whey buyers compare price per gram before buying.",
-            "R&D": "Cost out a whey blend with the same protein at a lower cost."},
+            "R&D": "Cost out a whey blend with the same protein at a lower cost.",
+           "Innovation": "Explore a whey format that lowers the price per gram of protein."},
 }
 PLAY_ACTIONS = {  # category → role → action for a play card handed to a team that doesn't own the play
     "retention": {"Marketing": "Plan the customer messages for: {name}.",
                   "Insights": "Check the data behind “{name}” before it goes out.",
                   "R&D": "Check what product change “{name}” depends on.",
+                  "Innovation": "Look for a product idea behind “{name}”.",
                   "Strategy": "Decide whether to go ahead with “{name}”."},
     "community": {"Marketing": "{action}",
                   "Insights": "Read the {community} threads and list the top questions.",
                   "R&D": "Prepare the product facts needed to answer questions in {community}.",
+                  "Innovation": "Collect product ideas from the {community} threads.",
                   "Strategy": "Decide who may speak for ProForge in {community}."},
 }
 
@@ -1228,15 +1239,21 @@ def frame_for_role(card: dict, role: str, e: Engagement, llm=None, engagement_id
     return c["suggested_action"], c["written_by"], intent, c["flag"]
 
 
+# Some evidence matters to more than one team: the same fact becomes one card per team, each framed for that
+# team's job (the "same evidence, framed per role" idea).
+EXTRA_OWNERS = {"F4": ["Innovation"]}
+
+
 def initial_cards(e: Engagement) -> list[dict]:
     cards = []
     for f in e.facts.values():
         if not f.default_owner or f.magnitude <= 0:
             continue
         base = base_score(f)
-        cards.append({"fact_id": f.id, "play_id": None, "category": f.category, "owner_role": f.default_owner,
-                      "base": base, "relevance_score": relevance(base, f.category, f.default_owner),
-                      "evidence": f.sentence, "suggested_action": FACT_ACTIONS[f.id][f.default_owner], "note": ""})
+        for owner in [f.default_owner] + EXTRA_OWNERS.get(f.id, []):
+            cards.append({"fact_id": f.id, "play_id": None, "category": f.category, "owner_role": owner,
+                          "base": base, "relevance_score": relevance(base, f.category, owner),
+                          "evidence": f.sentence, "suggested_action": FACT_ACTIONS[f.id][owner], "note": ""})
     for p in e.plays:
         if not p.matched:
             continue
@@ -1264,8 +1281,99 @@ def finalize_cards(cards: list[dict]) -> list[dict]:
 
 
 # ------------------------------------------------------------- run / load
+# ------------------------------------------------------------- agents
+# Each step of the pipeline is an agent with one job. LLM agents plan and write; code agents calculate, check,
+# route and gate. The trace records which agent acted, what it did and on what evidence.
+AGENTS = {
+    "Planner":    ("llm",  "Reads the business question and picks which lenses to run"),
+    "Analyst":    ("code", "Runs each lens and calculates facts from the source rows"),
+    "Playbook":   ("code", "Checks every retention and community play against the facts"),
+    "Writer":     ("llm",  "Writes the brief in plain language"),
+    "Governance": ("code", "Checks every sentence and action against the data, sends failures back, gates risky "
+                           "actions"),
+    "Router":     ("code", "Turns facts into cards for the right teams and ranks them with learned team weights"),
+    "Framer":     ("llm",  "Words each card's action for its team's job"),
+}
+
+
+def trace_row(agent, action, detail="", evidence=(), kind=None) -> dict:
+    return {"agent": agent, "kind": kind or AGENTS.get(agent, ("human", ""))[0], "action": action,
+            "detail": detail, "evidence": list(evidence)[:12]}
+
+
+def _count(items, key):
+    out = {}
+    for x in items:
+        out[key(x)] = out.get(key(x), 0) + 1
+    return out
+
+
+def _plan_trace(plan, llm) -> dict:
+    by_llm = str(plan.get("planned_by", "")).startswith("llm")
+    return trace_row("Planner", f"Chose {len(plan['lenses'])} lenses ({', '.join(plan['lenses'])}) for "
+                                f"{', '.join(plan['products'])}",
+                     "Questions: " + " · ".join(plan["questions"]) + ("" if by_llm else
+                     " (LLM off or unavailable: all lenses run)"), kind="llm" if by_llm else "code")
+
+
+def _analysis_trace(e: Engagement) -> list[dict]:
+    rows = []
+    for lens in e.plan["lenses"]:
+        fs = [f for f in e.facts.values() if f.lens == lens]
+        n_rows = sum(len(f.evidence_ids) for f in fs)
+        rows.append(trace_row("Analyst", f"{lens}: {len(fs)} fact(s)" + (f" from {n_rows:,} rows" if fs else ""),
+                              "; ".join(f"{f.id} {f.title}" for f in fs) or "no findings for this lens",
+                              [f.id for f in fs]))
+    if e.gaps:
+        rows.append(trace_row("Analyst", f"Reported {len(e.gaps)} thing(s) it couldn't check", " ".join(e.gaps)))
+    matched = [p for p in e.plays if p.matched]
+    rows.append(trace_row("Playbook", f"Checked {len(e.plays)} plays: {len(matched)} matched",
+                          "; ".join(f"{p.id} {p.name}: {p.reason}" for p in e.plays if not p.matched),
+                          [p.fact_id for p in matched if p.fact_id]))
+    return rows
+
+
+def _writing_trace(e: Engagement, calls: list, llm) -> list[dict]:
+    if llm is None or not any(s.written_by == "llm" for s in e.sentences):
+        return [trace_row("Writer", f"Built {len(e.sentences)} sentences directly from the facts",
+                          "The LLM was off or unreachable.", kind="code")]
+    st = _count(e.sentences, lambda s: s.status)
+    repairs = sum(c["step"] == "repair" for c in calls)
+    rows = [trace_row("Writer", f"Wrote {sum(s.written_by == 'llm' for s in e.sentences)} of {len(e.sentences)} "
+                                f"sentences, including a {len(split_sentences(next((s.text for s in e.sentences if s.section == 'summary'), '')))}"
+                                f"-sentence summary")]
+    rows.append(trace_row("Governance", f"Checked every sentence: {st.get('passed', 0)} verified first time, "
+                                        f"{st.get('repaired', 0)} fixed after {repairs} repair round(s), "
+                                        f"{st.get('flagged', 0)} flagged, {st.get('missing', 0)} missing",
+                          "; ".join(f"{s.key}: {s.problem}" for s in e.sentences
+                                    if s.status in ("flagged", "missing", "repaired") and s.problem)))
+    return rows
+
+
+def _card_trace(cards: list, calls: list, llm) -> list[dict]:
+    teams = _count(cards, lambda c: c["owner_role"])
+    rows = [trace_row("Router", f"Created {len(cards)} cards for {len(teams)} teams",
+                      ", ".join(f"{t}: {n}" for t, n in teams.items()), sorted({c["fact_id"] for c in cards}))]
+    if llm is not None and any(c["written_by"] == "llm" or c.get("flag") for c in cards):
+        flagged = [c for c in cards if c.get("flag")]
+        rows.append(trace_row("Framer", f"Worded {sum(c['written_by'] == 'llm' for c in cards)} of {len(cards)} "
+                                        f"actions for each team's job"))
+        rows.append(trace_row("Governance", f"Checked every action: {len(flagged)} not verified, "
+                                            f"{sum(c['step'] == 'frame_repair' for c in calls)} repair round(s)",
+                              "; ".join(f"{c['play_id'] or c['fact_id']} ({c['owner_role']}): {c['flag']}"
+                                        for c in flagged)))
+    else:
+        rows.append(trace_row("Framer", f"Used the example action for all {len(cards)} cards",
+                              "The LLM was off or unreachable.", kind="code"))
+    gated = [c for c in cards if c["gate_rule"]]
+    rows.append(trace_row("Governance", f"Sent {len(gated)} action(s) to Strategy for approval",
+                          "; ".join(f"{c['play_id'] or c['fact_id']} ({c['owner_role']}): {c['gate_rule']}"
+                                    for c in gated), [c["play_id"] or c["fact_id"] for c in gated]))
+    return rows
+
+
 def run(con, problem: str, llm=None, data: Data | None = None) -> Engagement:
-    """Full pipeline for one problem. Saves everything to the database and returns the engagement."""
+    """Full pipeline for one problem. Saves everything, including the agent trace, and returns the engagement."""
     problem = clean_problem(problem)
     d = data or load(con)
     mode = llm.name if llm else "offline"
@@ -1276,13 +1384,17 @@ def run(con, problem: str, llm=None, data: Data | None = None) -> Engagement:
         con.execute("UPDATE engagements SET plan = ? WHERE id = ?", (json.dumps(plan), eid))
         e = analyse(d, problem, plan)
         e.id, e.llm_mode = eid, mode
+        e.trace = [_plan_trace(plan, llm)] + _analysis_trace(e)
         synthesize(e, llm, eid)
+        e.trace += _writing_trace(e, db.llm_calls(con, eid), llm)
         cards = initial_cards(e)
         frame(cards, e, llm, eid)
         e.cards = finalize_cards(cards)
+        e.trace += _card_trace(e.cards, db.llm_calls(con, eid), llm)
         db.save_facts(con, eid, e.facts.values())
         db.save_play_matches(con, eid, e.plays)
         db.save_sentences(con, eid, e.sentences)
+        db.add_trace(con, eid, e.trace)
         db.set_engagement_status(con, eid, "done")
         con.commit()
         return e
@@ -1299,6 +1411,7 @@ def load_engagement(con, eid: int, data: Data | None = None) -> Engagement | Non
         return None
     e = analyse(data or load(con), row["problem"], row["plan"])
     e.id, e.llm_mode = eid, row["llm_mode"]
+    e.trace = db.trace(con, eid)
     saved = db.sentences(con, eid)
     if saved:
         e.sentences = [Sentence(s["section"], s["fact_id"], s["text"], s["template"], s["check_status"],

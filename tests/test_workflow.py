@@ -24,13 +24,13 @@ def events(con, cid):
 
 # ---------------------------------------------------------------- happy paths
 def test_seed_creates_cards_and_approvals(con, board):
-    assert len(db.cards(con, "work", board.id)) == 13
+    assert len(db.cards(con, "work", board.id)) == 14
     assert len([a for a in db.cards(con, "approval", board.id) if a["state"] == "Pending approval"]) == 4
 
 
 def test_seed_is_idempotent(con, board):
     workflow.seed(con, board)
-    assert len(db.cards(con, "work", board.id)) == 13
+    assert len(db.cards(con, "work", board.id)) == 14
 
 
 def test_ungated_card_accept_then_execute(con, board):
@@ -110,7 +110,7 @@ def test_metrics(con, board):
     workflow.handoff(con, c["id"], "Insights", board)
     workflow.execute(con, c["id"])
     m = workflow.metrics(con, board)
-    assert m["Executed"] == 2 and m["Avg hand-offs to execution"] == 0.5 and m["Cards"] == 13
+    assert m["Executed"] == 2 and m["Avg hand-offs to execution"] == 0.5 and m["Cards"] == 14
 
 
 # ---------------------------------------------------------------- illegal moves
@@ -178,6 +178,6 @@ def test_wrong_card_kinds_and_missing_cards(con, board):
 def test_engagements_keep_separate_boards(con, data, board):
     other = engine.run(con, "Why is our whey protein powder not selling?", data=data)
     workflow.seed(con, other)
-    assert len(db.cards(con, "work", board.id)) == 13 and len(db.cards(con, "work", other.id)) == 3
+    assert len(db.cards(con, "work", board.id)) == 14 and len(db.cards(con, "work", other.id)) == 3
     workflow.approve(con, db.open_approval(con, card(con, board, "F3")["id"])["id"])
     assert workflow.metrics(con, other)["Executed"] == 0

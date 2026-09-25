@@ -75,7 +75,7 @@ def test_playbook_matches_eight_of_nine(demo):
 
 
 def test_cards_and_gates(demo):
-    assert len(demo.cards) == 13
+    assert len(demo.cards) == 14
     gated = {c["play_id"] or c["fact_id"]: c["gate_rule"] for c in demo.cards if c["gate_rule"]}
     assert gated == {"F3": "Customer-facing claim", "PL3": "Price change", "PL8": "Customer-facing claim",
                      "PL9": "Customer-facing claim"}

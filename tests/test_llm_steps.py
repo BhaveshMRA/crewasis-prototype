@@ -66,7 +66,7 @@ def test_llm_unavailable_means_template_plan(con, data, fake_llm):
 def test_llm_exceptions_never_break_a_run(con, data, fake_llm):
     boom = RuntimeError("model crashed")
     e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(plan=boom, synthesize=boom, frame=boom), data)
-    assert len(e.cards) == 13 and all(s.status == "passed" for s in e.sentences)
+    assert len(e.cards) == 14 and all(s.status == "passed" for s in e.sentences)
 
 
 # ---------------------------------------------------------------- Synthesize

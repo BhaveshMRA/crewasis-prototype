@@ -43,14 +43,14 @@ def markdown(at):
 def run_fde(at, problem=None):
     if problem is not None:
         at.text_area[0].set_value(problem)
-    button(at, "Run the FDE").click().run()
+    button(at, "Ask Winston").click().run()
     assert not at.exception, at.exception
     return at
 
 
 def test_offline_demo_flow(app):
     at = app(offline=True)
-    assert "Run the FDE first (tab ①)." in [i.value for i in at.info]
+    assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
     run_fde(at)
     md = markdown(at)
     assert "Brief · analysis #1" in [h.value for h in at.header]
@@ -69,7 +69,7 @@ def test_offline_demo_flow(app):
 def test_problem_validation(app):
     at = run_fde(app(offline=True), "hi")
     assert any("Describe the problem" in e.value for e in at.error)
-    assert "Run the FDE first (tab ①)." in [i.value for i in at.info]
+    assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
 
 
 def test_simulated_mistake_shows_warning(app):
@@ -86,7 +86,7 @@ def test_history_and_reset(app):
     at.sidebar.selectbox(key="eid").set_value(1).run()
     assert "Brief · analysis #1" in [h.value for h in at.header]
     button(at, "Reset demo").click().run()
-    assert "Run the FDE first (tab ①)." in [i.value for i in at.info]
+    assert "Ask Winston first (tab ①)." in [i.value for i in at.info]
 
 
 def test_llm_flow_with_stub_ollama(app, ollama):
