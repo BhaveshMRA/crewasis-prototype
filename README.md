@@ -40,6 +40,19 @@ export OLLAMA_API_KEY=...                   # sent as a Bearer token, never stor
 streamlit run app.py
 ```
 
+Or put the same settings in a `.env` file: `cp .env.example .env` and fill it in. `.env` is git-ignored, so the
+key never gets committed.
+
+**Check the real model in one command** before the demo:
+
+```bash
+python check_llm.py
+```
+
+It connects, makes one small call, runs the full pipeline (Plan → Synthesize → Frame) and one hand-off against your
+model, shows what the LLM wrote and what the checks caught, and ends with `REAL LLM TEST: PASS` or `FAIL`. It uses a
+throwaway database and never prints the key.
+
 In the sidebar, **Test connection** checks the server and the model. **Use the LLM** turns it off for a fully
 offline run (or set `CREWASIS_OFFLINE=1`). `OLLAMA_TIMEOUT` (seconds, default 180) limits each call.
 

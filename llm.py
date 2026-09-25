@@ -9,6 +9,7 @@ Configuration (environment variables):
     OLLAMA_API_KEY   only for Ollama Cloud; sent as a Bearer token, never stored or logged
     OLLAMA_TIMEOUT   seconds per request, default 180
     CREWASIS_OFFLINE set to 1 to skip the LLM and use templates
+These can also go in a .env file next to app.py (see .env.example); .env is git-ignored.
 """
 from __future__ import annotations
 
@@ -21,6 +22,14 @@ import time
 import requests
 
 import db
+
+try:  # optional: read OLLAMA_* settings from a .env file next to the app (git-ignored)
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env", override=False)  # real environment variables win
+except ImportError:
+    pass
 
 DEFAULT_HOST = "http://localhost:11434"
 DEFAULT_MODEL = "nemotron-3-ultra"
