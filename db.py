@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS brief_sections (
     id INTEGER PRIMARY KEY,
     engagement_id INTEGER NOT NULL REFERENCES engagements(id),
     section TEXT NOT NULL, key TEXT NOT NULL DEFAULT '', fact_id TEXT, text TEXT NOT NULL, template TEXT NOT NULL,
-    written_by TEXT NOT NULL,           -- llm · template
-    check_status TEXT NOT NULL,         -- passed · fell_back
+    written_by TEXT NOT NULL,           -- llm · template (only when the LLM is off or unreachable)
+    check_status TEXT NOT NULL,         -- passed · repaired · flagged · missing
     problem TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS cards (
@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS cards (
     relevance_score REAL NOT NULL,
     evidence TEXT NOT NULL,
     suggested_action TEXT NOT NULL,
-    written_by TEXT DEFAULT 'template', -- who worded the action: llm · template
+    written_by TEXT DEFAULT 'template', -- who worded the action: llm · template (offline)
+    flag TEXT DEFAULT '',               -- why the LLM's wording couldn't be verified, if it couldn't
     requires_approval INTEGER NOT NULL,
     gate_rule TEXT,
     note TEXT DEFAULT '',
@@ -105,6 +106,11 @@ def connect(path=None) -> sqlite3.Connection:
     con = sqlite3.connect(path or DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    # upgrade databases created before a column existed
+    for table, column, ddl in (("cards", "flag", "TEXT DEFAULT ''"),
+                               ("brief_sections", "key", "TEXT NOT NULL DEFAULT ''")):
+        if column not in {r[1] for r in con.execute(f"PRAGMA table_info({table})")}:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
     return con
 
 
@@ -207,11 +213,11 @@ def add_card(con, **c) -> int:
     cur = con.execute(
         "INSERT INTO cards (engagement_id, fact_id, play_id, kind, parent_card_id, category, owner_role, state, base, "
         "relevance_score, evidence, suggested_action, written_by, requires_approval, gate_rule, note, created_at, "
-        "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "updated_at, flag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (c.get("engagement_id"), c["fact_id"], c.get("play_id"), c["kind"], c.get("parent_card_id"), c["category"],
          c["owner_role"], c["state"], c["base"], c["relevance_score"], c["evidence"], c["suggested_action"],
          c.get("written_by", "template"), int(bool(c.get("requires_approval"))), c.get("gate_rule"),
-         c.get("note", ""), t, t))
+         c.get("note", ""), t, t, c.get("flag", "")))
     log(con, cur.lastrowid, "created", to_role=c["owner_role"], to_state=c["state"])
     return cur.lastrowid
 

@@ -37,6 +37,7 @@ st.markdown("""
 .tag{background:rgba(128,128,128,.14)}
 .by{font-size:.66rem;padding:1px 7px;margin-left:4px;vertical-align:middle}
 .by.llm{background:rgba(125,102,236,.14);color:#7D66EC}.by.tpl{background:rgba(128,128,128,.14)}
+.by.fix{background:rgba(2,132,199,.12);color:#0369A1}.by.bad{background:rgba(220,38,38,.12);color:#DC2626}
 .score{float:right;font-weight:700;font-size:.95rem}
 .score small{font-weight:400;opacity:.6}
 .action{font-size:1.05rem;font-weight:650;margin:6px 0 4px;line-height:1.35}
@@ -109,9 +110,18 @@ def state_pill(state: str) -> str:
     return f'<span class="pill state {STATE_CLASS[state]}">{state}</span>'
 
 
-def by_pill(written_by: str) -> str:
-    return ('<span class="pill by llm">LLM · checked</span>' if written_by == "llm"
-            else '<span class="pill by tpl">template</span>')
+def by_pill(written_by: str, status: str = "passed", flag: str = "") -> str:
+    if written_by != "llm":
+        return '<span class="pill by tpl">offline</span>'
+    if status == "flagged" or flag:
+        return '<span class="pill by bad">LLM · not verified</span>'
+    if status == "repaired":
+        return '<span class="pill by fix">LLM · fixed on retry</span>'
+    return '<span class="pill by llm">LLM · checked</span>'
+
+
+def label_of(s) -> str:
+    return "summary" if s.section == "summary" else (s.key.split(":")[-1] if s.key else (s.fact_id or s.section))
 
 
 def tiles(items, accent_first=False) -> str:
@@ -248,8 +258,8 @@ with tab_brief:
         st.info("Run the FDE first (tab ①).")
     else:
         f = e.facts
-        passed = sum(s.status == "passed" for s in sentences)
-        by_llm = sum(s.written_by == "llm" for s in sentences)
+        verified = sum(s.status in ("passed", "repaired") for s in sentences)
+        by_llm = sum(s.written_by == "llm" and s.status in ("passed", "repaired") for s in sentences)
         st.header(f"Brief · analysis #{e.id}")
         st.markdown('<div class="lead">What is going wrong, why, and what to do. Every number is calculated from '
                     'source rows; purple chips are facts, grey chips are the rows behind them.</div>',
@@ -258,10 +268,12 @@ with tab_brief:
         calls = db.llm_calls(con, e.id)
         failed = [c for c in calls if not c["ok"]]
         if e.llm_mode == "offline":
-            st.caption("Written offline from templates (no LLM).")
+            st.caption("Offline: the LLM is switched off, so the text is built directly from the facts.")
+        elif failed and not any(s.written_by == "llm" for s in sentences):
+            st.warning(f"The LLM ({e.llm_mode}) couldn't be reached (“{failed[-1]['error']}”), so this brief is built "
+                       f"directly from the facts. Check the connection and run it again.")
         elif failed:
-            st.warning(f"The LLM ({e.llm_mode}) had {len(failed)} failed call(s), latest: “{failed[-1]['error']}”. "
-                       f"Those parts use templates.")
+            st.warning(f"The LLM ({e.llm_mode}) had {len(failed)} failed call(s), latest: “{failed[-1]['error']}”.")
         tile_items = []
         if "F5" in f:
             tile_items.append((f"−{pct(f['F5'].computation['total_drop'])}", "sales this quarter"))
@@ -274,24 +286,28 @@ with tab_brief:
             tile_items.append((pct(f["F1"].magnitude), "bad reviews about texture"))
         if "F14" in f and f["F14"].magnitude > 0:
             tile_items.append((f"+{pct(f['F14'].magnitude)}", "whey price per gram vs cheapest rival"))
-        tile_items.append((f"{passed}/{len(sentences)}", f"sentences passed the source check ({by_llm} by the LLM)"))
+        tile_items.append((f"{verified}/{len(sentences)}", f"sentences verified against the data ({by_llm} "
+                                                            f"written by the LLM)"))
         st.markdown(tiles(tile_items, accent_first=True), unsafe_allow_html=True)
         for s in sentences:
-            if s.status == "fell_back":
-                st.warning(f"**Check caught a bad sentence** ({s.fact_id or 'summary'}): {s.problem}. "
-                           f"It was replaced by the template sentence built from the facts.")
+            if s.status == "flagged":
+                st.error(f"**Not verified** ({label_of(s)}): {s.problem}. It's shown as the LLM wrote it; check the "
+                         f"rows behind it before relying on it.")
+            elif s.status == "missing":
+                st.warning(f"The LLM didn't write the {label_of(s)} sentence, even after being asked again.")
 
         summary = next((s for s in sentences if s.section == "summary"), None)
-        if summary:
-            st.markdown(f'<div class="summary"><b>Summary</b> {by_pill(summary.written_by)}<br>{chips(summary.text)}'
-                        f'</div>', unsafe_allow_html=True)
+        if summary and summary.status != "missing":
+            st.markdown(f'<div class="summary"><b>Summary</b> {by_pill(summary.written_by, summary.status)}<br>'
+                        f'{chips(summary.text)}</div>', unsafe_allow_html=True)
 
         work = db.cards(con, "work", e.id)
         if work:
             st.subheader("Start here")
             for c in sorted(work, key=lambda c: -c["base"])[:3]:
                 st.markdown(f'<div class="start">{team_pill(c["owner_role"])}<b>{html.escape(c["suggested_action"])}'
-                            f'</b>{by_pill(c["written_by"])}<div class="why">{chips(engine.card_why(c, e))}</div></div>',
+                            f'</b>{by_pill(c["written_by"], flag=c["flag"])}<div class="why">'
+                            f'{chips(engine.card_why(c, e))}</div></div>',
                             unsafe_allow_html=True)
 
         if e.root_causes:
@@ -317,15 +333,21 @@ with tab_brief:
                 s = next((y for y in sentences if y.fact_id == x.id and y.section == "findings"), None)
                 if s is None:
                     continue
-                flag = ' <span class="pill state pending">fell back to template</span>' if s.status == "fell_back" else ""
-                st.markdown(f"- {chips(s.text)}{by_pill(s.written_by)}{flag}", unsafe_allow_html=True)
+                if s.status == "missing":
+                    st.markdown(f"- *The LLM didn't write this finding; see the rows behind {x.id}.*")
+                else:
+                    st.markdown(f"- {chips(s.text)}{by_pill(s.written_by, s.status)}", unsafe_allow_html=True)
                 with st.expander(f"Rows behind {x.id}"):
                     show_fact(e, x.id)
 
         ret = [p for p in e.plays if p.section == "retention"]
         def play_text(p):
             s = next((s for s in sentences if s.key == f"play:{p.id}"), None)
-            return (s.text, s.written_by) if s else (p.plan_line, "template")
+            if s is None:
+                return p.plan_line, "template", "passed"
+            if s.status == "missing":
+                return "The LLM didn't write this line.", "llm", "flagged"
+            return s.text, s.written_by, s.status
 
         if any(p.checked for p in ret):
             st.subheader("Retention plan")
@@ -338,8 +360,8 @@ with tab_brief:
                     for p in [p for p in ret if p.matched and p.effort == effort]:
                         owner = "R&D" if p.merge_into else p.owner
                         extra = f" · Do after: {p.do_after}" if p.do_after else ""
-                        txt, wb = play_text(p)
-                        st.markdown(f'<div class="plan"><b>{html.escape(p.name)}</b>{team_pill(owner)}{by_pill(wb)}'
+                        txt, wb, stt = play_text(p)
+                        st.markdown(f'<div class="plan"><b>{html.escape(p.name)}</b>{team_pill(owner)}{by_pill(wb, stt)}'
                                     f'<div class="why">{chips(txt)}</div>'
                                     f'<div class="m">Metric to watch: {html.escape(p.metric)}{html.escape(extra)}'
                                     f'</div></div>', unsafe_allow_html=True)
@@ -351,9 +373,9 @@ with tab_brief:
         if not e.community_table.empty:
             st.subheader("Where to show up")
             for p in [p for p in e.plays if p.section == "community" and p.matched]:
-                txt, wb = play_text(p)
+                txt, wb, stt = play_text(p)
                 st.markdown(f'<div class="plan"><b>{html.escape(p.name)}</b>{team_pill(p.owner)}'
-                            f'<span class="pill state pending">needs Strategy approval</span>{by_pill(wb)}'
+                            f'<span class="pill state pending">needs Strategy approval</span>{by_pill(wb, stt)}'
                             f'<div class="why">{chips(txt)}</div></div>', unsafe_allow_html=True)
             st.dataframe(e.community_table.rename(columns={
                 "community": "Community", "posts": "Posts this quarter", "competitor_mentions": "Competitor mentions",
@@ -365,7 +387,7 @@ with tab_brief:
         st.subheader(f"All recommendations → {len(work)} cards on the Team board")
         if work:
             st.dataframe(pd.DataFrame([{"Owner": c["owner_role"], "Action": c["suggested_action"],
-                                        "Worded by": c["written_by"], "From": c["play_id"] or c["fact_id"],
+                                        "Worded by": ("LLM" + (" (not verified)" if c["flag"] else "")) if c["written_by"] == "llm" else "offline", "From": c["play_id"] or c["fact_id"],
                                         "Needs approval": c["gate_rule"] or ""} for c in
                                        sorted(work, key=lambda c: -c["relevance_score"])]),
                          hide_index=True, width="stretch")
@@ -378,8 +400,9 @@ with tab_brief:
             st.dataframe(e.sources[["prefix", "name", "file", "description", "collected_at", "synthetic",
                                     "confidence", "rows_loaded", "rows_cited"]], hide_index=True, width="stretch")
         with st.expander(f"What the LLM did ({len(calls)} calls)"):
-            st.caption("The LLM only plans and words things. Every number above is calculated by code, and every "
-                       "LLM sentence passed the source and number checks or was replaced by a template.")
+            st.caption("The LLM plans and writes the words. Every number above is calculated by code; every LLM "
+                       "sentence is checked against the data, sent back with the reason if it fails, and flagged if "
+                       "it still can't be verified.")
             if calls:
                 st.dataframe(pd.DataFrame(calls)[["step", "model", "ok", "cached", "latency_ms", "error", "at"]],
                              hide_index=True, width="stretch")
@@ -415,7 +438,10 @@ def render_card(c: dict):
                          "Rejected": ("bad", "Rejected by Strategy: revise or hand off")}.get(state, ("warn", ""))
             banner = f'<div class="banner {kind}">{msg} · {html.escape(c["gate_rule"])}</div>'
         note = f'<div class="note">{chips(c["note"])}</div>' if c["note"] else ""
-        st.markdown(f'{head}<div class="action">{html.escape(c["suggested_action"])}{by_pill(c["written_by"])}</div>'
+        if c["flag"]:
+            banner += f'<div class="banner bad">LLM wording not verified: {html.escape(c["flag"])}</div>'
+        st.markdown(f'{head}<div class="action">{html.escape(c["suggested_action"])}'
+                    f'{by_pill(c["written_by"], flag=c["flag"])}</div>'
                     f'<div class="why">Why: {chips(engine.card_why(c, e))}</div>{note}{banner}',
                     unsafe_allow_html=True)
 

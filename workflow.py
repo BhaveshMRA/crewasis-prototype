@@ -117,13 +117,13 @@ def handoff(con, card_id, to_role, e: engine.Engagement, llm=None):
         raise InvalidMove("The card already belongs to that team.")
     if c["state"] == "Executed":
         raise InvalidMove("An executed card can't be handed off.")
-    action, written_by, intent = engine.frame_for_role(c, to_role, e, llm, c["engagement_id"])
+    action, written_by, intent, flag = engine.frame_for_role(c, to_role, e, llm, c["engagement_id"])
     rule = engine.gate(action, to_role, intent)
     old = db.open_approval(con, card_id)
     if old:  # an approval covers the exact wording, so the old one no longer applies
         db.update_card(con, old["id"], state="Withdrawn")
         db.log(con, old["id"], "withdrawn", "Strategy", "Strategy", "Pending approval", "Withdrawn")
-    db.update_card(con, card_id, owner_role=to_role, suggested_action=action, written_by=written_by,
+    db.update_card(con, card_id, owner_role=to_role, suggested_action=action, written_by=written_by, flag=flag,
                    relevance_score=engine.relevance(c["base"], c["category"], to_role),
                    requires_approval=int(bool(rule)), gate_rule=rule, state="Drafted")
     db.log(con, card_id, "handoff", c["owner_role"], to_role, c["state"], "Drafted")

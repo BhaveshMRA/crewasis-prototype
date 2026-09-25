@@ -172,9 +172,9 @@ def test_number_check_normalises_formats(demo):
 
 def test_simulated_mistake_is_caught(demo):
     sents = engine.with_simulated_mistake(demo)
-    bad = [s for s in sents if s.status == "fell_back"]
+    bad = [s for s in sents if s.status == "flagged"]
     assert len(bad) == 1 and "isn't in the cited facts" in bad[0].problem
-    assert bad[0].text == bad[0].template
+    assert bad[0].text != bad[0].template and bad[0].written_by == "llm"  # shown as written, flagged
 
 
 def test_saved_engagement_reloads_identically(con, data, demo):

@@ -142,15 +142,18 @@ def test_full_run_through_stub_ollama(ollama, con, data):
     ollama.reply("<think>rewriting…</think>" + json.dumps({
         "summary": "Texture drives complaints [F1] and lapsed buyers [F8].",
         "sentences": [{"key": "find:F1", "text": "34% of recent bad reviews say the bar is chalky or dry [F1]."}]}))
+    ollama.reply(json.dumps({"sentences": []}))  # the repair round for the sentences it skipped
     ollama.reply("```json\n" + json.dumps({"actions": [{"key": "c0", "action": "Test a softer bar base this week."}]})
                  + "\n```")
+    ollama.reply(json.dumps({"actions": []}))    # the repair round for the actions it skipped
     client = OllamaLLM(con, host=ollama.url, api_key="")
     e = engine.run(con, engine.DEMO_PROBLEM, client, data)
     assert e.llm_mode == "ollama:nemotron-3-ultra" and e.plan["planned_by"] == "llm"
     by = {s.key: s for s in e.sentences}
     assert by["find:F1"].written_by == "llm" and by["summary"].written_by == "llm"
+    assert by["find:F6"].status == "missing"  # skipped twice: marked, not filled with a template
     assert e.cards[0]["suggested_action"] == "Test a softer bar base this week."
-    assert [c["step"] for c in db.llm_calls(con, e.id)] == ["plan", "synthesize", "frame"]
+    assert [c["step"] for c in db.llm_calls(con, e.id)] == ["plan", "synthesize", "repair", "frame", "frame_repair"]
     assert all(c["ok"] for c in db.llm_calls(con, e.id))
 
 

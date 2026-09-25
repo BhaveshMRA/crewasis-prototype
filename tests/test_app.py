@@ -54,7 +54,7 @@ def test_offline_demo_flow(app):
     run_fde(at)
     md = markdown(at)
     assert "Brief · analysis #1" in [h.value for h in at.header]
-    assert "Texture is the top complaint" in md and "Written offline from templates" in "\n".join(c.value for c in at.caption)
+    assert "Texture is the top complaint" in md and "Offline: the LLM is switched off" in "\n".join(c.value for c in at.caption)
     # Marketing: accept the gated sugar card; it can't be executed yet
     next(b for b in at.button if b.label == "Accept").click().run()
     assert any(b.label == "Awaiting Strategy approval" and b.disabled for b in at.button)
@@ -75,7 +75,7 @@ def test_problem_validation(app):
 def test_simulated_mistake_shows_warning(app):
     at = run_fde(app(offline=True))
     at.sidebar.checkbox[0].check().run()
-    assert any("Check caught a bad sentence" in w.value for w in at.warning)
+    assert any("Not verified" in x.value for x in at.error)
 
 
 def test_history_and_reset(app):
@@ -95,20 +95,22 @@ def test_llm_flow_with_stub_ollama(app, ollama):
     ollama.reply(json.dumps({"summary": "Texture is the main reason buyers leave [F1] [F8].",
                              "sentences": [{"key": "find:F1",
                                             "text": "34% of this quarter's bad reviews call the bar chalky or dry [F1]."}]}))
+    ollama.reply(json.dumps({"sentences": []}))
     ollama.reply(json.dumps({"actions": [{"key": "c0", "action": "Test a softer bar base with 20 testers."}]}))
+    ollama.reply(json.dumps({"actions": []}))
     at = app(offline=False, host=ollama.url)
     run_fde(at)
     md = markdown(at)
     assert "LLM · checked" in md and "Texture is the main reason buyers leave" in md
     assert "planned by llm" in md
-    assert [p[1] for p in ollama.posts()] == ["/api/chat"] * 3
+    assert [p[1] for p in ollama.posts()] == ["/api/chat"] * 5
     assert not any("failed call" in w.value for w in at.warning)
 
 
 def test_ollama_down_falls_back_with_a_warning(app):
     at = app(offline=False, host="http://127.0.0.1:9")
     run_fde(at)
-    assert any("failed call" in w.value for w in at.warning)
+    assert any("couldn't be reached" in w.value for w in at.warning)
     assert "Texture is the top complaint" in markdown(at)
 
 

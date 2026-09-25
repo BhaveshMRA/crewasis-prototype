@@ -78,36 +78,101 @@ def test_good_rewrites_are_used_and_marked(con, data, fake_llm):
     assert summary.written_by == "llm" and summary.text == "Texture is the main problem [F1]."
 
 
-@pytest.mark.parametrize("damage, expected_problem", [
+def test_system_prompt_asks_for_a_two_sentence_summary():
+    assert "ONE or TWO sentences" in engine.SYNTH_SYSTEM and "at most 40 words" in engine.SYNTH_SYSTEM
+    assert "ONE or TWO sentences" in engine.REPAIR_SYSTEM
+
+
+DAMAGE = [
     (lambda t: t.replace("34%", "43%"), "43 isn't in the cited facts"),                     # changed a number
     (lambda t: engine.CITATION.sub("", t), "no citation"),                                  # dropped citations
     (lambda t: t.replace("[F1]", "[F99]"), "unknown id F99"),                               # invented a source
-    (lambda t: t.replace("[F1]", "[F2]"), ""),                                              # swapped its own fact
+    (lambda t: t.replace("[F1]", "[F2]"), "dropped its own citation"),                      # swapped its own fact
     (lambda t: t + " It is also 97% certain [F1].", "97 isn't in the cited facts"),         # added a claim
-    (lambda t: " ".join(["very"] * 80) + " " + t, "too long"),                              # rambling
-])
-def test_bad_rewrites_fall_back_to_the_template(con, data, fake_llm, damage, expected_problem):
-    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=rewrite_all(damage)), data)
-    f1 = next(s for s in e.sentences if s.fact_id == "F1" and s.section == "findings")
-    assert f1.status == "fell_back" and f1.written_by == "template"
-    assert f1.text == f1.template == e.facts["F1"].sentence
+    (lambda t: " ".join(["very"] * 80) + " " + t, "words"),                                 # rambling
+]
+
+
+@pytest.mark.parametrize("damage, expected_problem", DAMAGE)
+def test_bad_sentence_is_sent_back_and_the_fix_is_used(con, data, fake_llm, damage, expected_problem):
+    fixed = "34% of this quarter's bad reviews say the bar is chalky or dry [F1]."
+    llm = fake_llm(synthesize=rewrite_all(damage),
+                   repair=lambda req: {"sentences": [{"key": x["key"], "text": fixed} for x in req["items"]
+                                                     if x["key"] == "find:F1"]})
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
+    f1 = next(s for s in e.sentences if s.key == "find:F1")
+    assert f1.status == "repaired" and f1.written_by == "llm" and f1.text == fixed
+    repair_req = next(req for step, req in llm.calls if step == "repair")
+    item = next(x for x in repair_req["items"] if x["key"] == "find:F1")
+    assert expected_problem in item["problem"] and "F1" in item["facts"]  # the LLM is told what was wrong
+
+
+@pytest.mark.parametrize("damage, expected_problem", DAMAGE)
+def test_unfixable_sentence_is_shown_flagged_never_replaced(con, data, fake_llm, damage, expected_problem):
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=rewrite_all(damage), repair=None), data)
+    f1 = next(s for s in e.sentences if s.key == "find:F1")
+    assert f1.status == "flagged" and f1.written_by == "llm"
+    assert f1.text == damage(e.facts["F1"].sentence) and f1.text != f1.template  # the LLM's own words
     assert expected_problem in f1.problem
 
 
-def test_summary_with_invented_number_falls_back(con, data, fake_llm):
-    reply = lambda req: {"summary": "Sales fell 55% because of texture [F1].", "sentences": []}  # noqa: E731
-    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=reply), data)
+def test_repair_is_tried_at_most_twice(con, data, fake_llm):
+    llm = fake_llm(synthesize=rewrite_all(lambda t: t.replace("34%", "43%")),
+                   repair=lambda req: {"sentences": [{"key": x["key"], "text": x["text"]} for x in req["items"]]})
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
+    assert [step for step, _ in llm.calls].count("repair") == engine.REPAIR_ROUNDS
+    assert next(s for s in e.sentences if s.key == "find:F1").status == "flagged"
+
+
+def test_long_summary_is_trimmed_to_the_llms_first_two_sentences(con, data, fake_llm):
+    three = ("Texture is the main problem [F1]. Lapsed buyers complain about it most [F8]. "
+             "Fix the recipe before any win-back offer [F1].")
+    llm = fake_llm(synthesize=lambda req: {"summary": three, "sentences": []}, repair=None)
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
     s = next(s for s in e.sentences if s.section == "summary")
-    assert s.status == "fell_back" and "55" in s.problem and s.text.startswith("Most likely cause")
+    assert s.written_by == "llm" and s.status == "repaired"
+    assert s.text == "Texture is the main problem [F1]. Lapsed buyers complain about it most [F8]."
+    assert len(engine.split_sentences(s.text)) == 2
 
 
-def test_partial_and_malformed_synth_replies(con, data, fake_llm):
+def test_summary_repair_asks_for_two_sentences(con, data, fake_llm):
+    long = " ".join(["Texture is the main problem [F1]."] * 4)
+    llm = fake_llm(synthesize=lambda req: {"summary": long, "sentences": []},
+                   repair=lambda req: {"sentences": [{"key": "summary", "text": "Fix the texture first [F1]."}]})
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
+    s = next(s for s in e.sentences if s.section == "summary")
+    assert s.text == "Fix the texture first [F1]." and s.status == "repaired"
+    item = next(req for step, req in llm.calls if step == "repair")["items"][0]
+    assert item["key"] == "summary" and "4 sentences" in item["problem"]
+
+
+def test_summary_with_invented_number_is_flagged(con, data, fake_llm):
+    reply = lambda req: {"summary": "Sales fell 55% because of texture [F1].", "sentences": []}  # noqa: E731
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=reply, repair=None), data)
+    s = next(s for s in e.sentences if s.section == "summary")
+    assert s.status == "flagged" and "55" in s.problem and s.text == "Sales fell 55% because of texture [F1]."
+
+
+def test_sentences_the_llm_skips_are_requested_again(con, data, fake_llm):
+    llm = fake_llm(synthesize={"summary": "Fix the texture first [F1].", "sentences": []},
+                   repair=lambda req: {"sentences": [{"key": x["key"], "text": x["text"]} for x in req["items"]]})
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
+    assert all(s.written_by == "llm" and s.status == "repaired" for s in e.sentences if s.section != "summary")
+
+
+def test_sentences_still_missing_are_marked_missing_not_templated(con, data, fake_llm):
     reply = {"summary": 42, "sentences": [{"key": "find:F2", "text": "₹6.0 per gram vs ₹5.0 for CleanBar Co [F2]."},
                                           "not a dict", {"key": "find:F404", "text": "x"}, {"text": "no key"}]}
-    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=reply), data)
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(synthesize=reply, repair=None), data)
     by = {s.key: s for s in e.sentences}
     assert by["find:F2"].written_by == "llm" and by["find:F2"].status == "passed"
-    assert by["find:F1"].written_by == "template" and by["summary"].written_by == "template"
+    assert by["find:F1"].status == "missing" and by["summary"].status == "missing"
+
+
+def test_split_sentences_keeps_decimals_and_citations():
+    assert engine.split_sentences("It costs ₹6.0 per gram [F2]. Rivals charge ₹5.0 [F2].") == \
+        ["It costs ₹6.0 per gram [F2].", "Rivals charge ₹5.0 [F2]."]
+    assert len(engine.split_sentences("One sentence with 22.5% in it [F1].")) == 1
 
 
 # ---------------------------------------------------------------- Frame
@@ -119,19 +184,39 @@ def test_good_actions_are_used(con, data, fake_llm):
     e = engine.run(con, engine.DEMO_PROBLEM,
                    fake_llm(frame=frame_reply(lambda c: f"This week, {c['example_action'][0].lower()}"
                                                         f"{c['example_action'][1:]}")), data)
-    assert all(c["written_by"] == "llm" and c["suggested_action"].startswith("This week") for c in e.cards)
+    assert all(c["written_by"] == "llm" and c["suggested_action"].startswith("This week") and not c["flag"]
+               for c in e.cards)
 
 
-@pytest.mark.parametrize("bad", [
-    "",                                                  # empty
-    "Do it. Then do something else too.",               # two sentences
-    "Run a campaign " + "and more " * 20,               # too long
-    "Cut the price by 4321 rupees on marketplaces.",    # invented number
-    "   ",                                               # whitespace
-])
-def test_bad_actions_fall_back(con, data, fake_llm, bad):
-    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(frame=frame_reply(lambda c: bad)), data)
-    assert all(c["written_by"] == "template" for c in e.cards)
+BAD_ACTIONS = [
+    ("Do it. Then do something else too.", "more than one sentence"),
+    ("Run a campaign " + "and more " * 20, "words"),
+    ("Cut the price by 4321 rupees on marketplaces.", "4321 isn't in the finding"),
+]
+
+
+@pytest.mark.parametrize("bad, problem", BAD_ACTIONS)
+def test_bad_action_is_sent_back_and_fixed(con, data, fake_llm, bad, problem):
+    llm = fake_llm(frame=frame_reply(lambda c: bad),
+                   frame_repair=lambda req: {"actions": [{"key": x["key"], "action": "Fix it this week."}
+                                                         for x in req["items"]]})
+    e = engine.run(con, engine.DEMO_PROBLEM, llm, data)
+    assert all(c["suggested_action"] == "Fix it this week." and c["written_by"] == "llm" and not c["flag"]
+               for c in e.cards)
+    item = next(req for step, req in llm.calls if step == "frame_repair")["items"][0]
+    assert problem in item["problem"]
+
+
+@pytest.mark.parametrize("bad, problem", BAD_ACTIONS)
+def test_unfixable_action_is_shown_flagged(con, data, fake_llm, bad, problem):
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(frame=frame_reply(lambda c: bad), frame_repair=None), data)
+    assert all(c["written_by"] == "llm" and problem in c["flag"] for c in e.cards)
+    assert all(c["suggested_action"] == engine.clean_action(bad) for c in e.cards)
+
+
+def test_empty_actions_keep_the_example_and_are_flagged(con, data, fake_llm):
+    e = engine.run(con, engine.DEMO_PROBLEM, fake_llm(frame=frame_reply(lambda c: "   "), frame_repair=None), data)
+    assert all(c["flag"] == "the LLM didn't write this action" for c in e.cards)
 
 
 def test_action_numbers_from_the_finding_are_allowed(con, data, fake_llm):

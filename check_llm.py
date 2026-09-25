@@ -56,21 +56,31 @@ def main() -> int:
           f"products {', '.join(e.plan['products'])}")
     for q in e.plan["questions"]:
         print(f"    - {q}")
-    by_llm = [s for s in e.sentences if s.written_by == "llm"]
-    fell = [s for s in e.sentences if s.status == "fell_back"]
-    print(f"\n  Brief: {len(by_llm)} of {len(e.sentences)} sentences written by the LLM and passed the checks; "
-          f"{len(fell)} fell back to templates")
-    for s in by_llm[:4]:
+    count = {k: sum(s.status == k for s in e.sentences) for k in ("passed", "repaired", "flagged", "missing")}
+    llm_written = sum(s.written_by == "llm" for s in e.sentences)
+    print(f"\n  Brief: {llm_written} of {len(e.sentences)} sentences written by the LLM · verified first time "
+          f"{count['passed']} · fixed on retry {count['repaired']} · not verified {count['flagged']} · "
+          f"missing {count['missing']}")
+    summary = next((s for s in e.sentences if s.section == "summary"), None)
+    if summary:
+        print(f"    SUMMARY ({summary.status}, {len(engine.split_sentences(summary.text))} sentences): {summary.text}")
+    for s in [s for s in e.sentences if s.section == "findings"][:3]:
         print(f"    LLM  {s.text}")
-    for s in fell:
-        print(f"    CAUGHT ({s.key or s.fact_id}): {s.problem}")
+    for s in e.sentences:
+        if s.status in ("repaired", "flagged", "missing"):
+            print(f"    {s.status.upper():8} ({s.key}): {s.problem or 'fixed after the LLM was told what was wrong'}")
     acts = [c for c in e.cards if c["written_by"] == "llm"]
-    print(f"\n  Actions: {len(acts)} of {len(e.cards)} worded by the LLM; "
+    flagged = [c for c in e.cards if c["flag"]]
+    print(f"\n  Actions: {len(acts)} of {len(e.cards)} worded by the LLM; {len(flagged)} not verified; "
           f"{sum(bool(c['gate_rule']) for c in e.cards)} need Strategy approval")
     for c in e.cards[:5]:
-        print(f"    [{c['owner_role']}] {c['suggested_action']}" + ("  (needs approval)" if c["gate_rule"] else ""))
-    results.append(line(len(by_llm) > 0, "at least one LLM sentence passed the checks"))
-    results.append(line(len(acts) > 0, "at least one LLM action passed validation"))
+        print(f"    [{c['owner_role']}] {c['suggested_action']}" + ("  (needs approval)" if c["gate_rule"] else "")
+              + (f"  (NOT VERIFIED: {c['flag']})" if c["flag"] else ""))
+    results.append(line(llm_written == len(e.sentences), "every brief sentence written by the LLM"))
+    results.append(line(summary is not None and summary.written_by == "llm"
+                        and len(engine.split_sentences(summary.text)) <= 2, "summary is the LLM's, 2 sentences max"))
+    results.append(line(count["flagged"] + count["missing"] == 0, "every LLM sentence verified against the data"))
+    results.append(line(len(acts) == len(e.cards) and not flagged, "every action worded by the LLM and verified"))
 
     print("\n4. Hand-off re-wording (texture card: R&D → Marketing)")
     workflow.seed(con, e)
