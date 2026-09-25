@@ -1,0 +1,147 @@
+id,date,platform,community,signal_type,topic,brand_mentioned,answered_by_brand,text
+S001,2026-04-02,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S002,2026-04-02,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S003,2026-04-05,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S004,2026-04-10,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S005,2026-04-11,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S006,2026-04-16,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S007,2026-04-17,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S008,2026-04-18,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S009,2026-04-22,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S010,2026-04-23,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S011,2026-04-24,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S012,2026-04-28,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S013,2026-04-30,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S014,2026-05-02,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S015,2026-05-02,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S016,2026-05-04,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S017,2026-05-04,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S018,2026-05-09,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S019,2026-05-11,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Where can I buy these offline?
+S020,2026-05-14,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S021,2026-05-15,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S022,2026-05-15,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S023,2026-05-20,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S024,2026-05-21,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S025,2026-05-22,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S026,2026-05-22,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S027,2026-05-22,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Where can I buy these offline?
+S028,2026-05-22,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S029,2026-05-23,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S030,2026-05-25,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S031,2026-05-26,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S032,2026-05-26,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S033,2026-05-29,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S034,2026-05-30,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S035,2026-05-30,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S036,2026-06-03,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S037,2026-06-04,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S038,2026-06-09,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S039,2026-06-09,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S040,2026-06-11,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S041,2026-06-12,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S042,2026-06-13,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S043,2026-06-16,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S044,2026-06-17,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S045,2026-06-24,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S046,2026-06-26,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S047,2026-06-26,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S048,2026-06-28,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Where can I buy these offline?
+S049,2026-06-29,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S050,2026-06-30,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S051,2026-07-02,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S052,2026-07-03,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S053,2026-07-03,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S054,2026-07-06,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Is it on quick-commerce apps yet?
+S055,2026-07-06,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S056,2026-07-10,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S057,2026-07-10,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S058,2026-07-10,instagram,Instagram @proforge comments,request,plant_protein,ProForge,yes,Please make a vegan version!
+S059,2026-07-12,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S060,2026-07-12,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S061,2026-07-13,instagram,Instagram @proforge comments,question,sugar,ProForge,no,Is this bar sugar free?
+S062,2026-07-13,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S063,2026-07-14,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S064,2026-07-14,instagram,Instagram @proforge comments,request,plant_protein,ProForge,yes,Please make a vegan version!
+S065,2026-07-14,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S066,2026-07-15,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S067,2026-07-20,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S068,2026-07-20,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S069,2026-07-21,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S070,2026-07-22,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S071,2026-07-24,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S072,2026-07-24,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S073,2026-07-25,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S074,2026-07-27,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S075,2026-07-28,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S076,2026-07-28,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S077,2026-07-30,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S078,2026-07-30,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S079,2026-07-30,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S080,2026-07-30,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S081,2026-07-31,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S082,2026-08-02,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Is it on quick-commerce apps yet?
+S083,2026-08-02,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S084,2026-08-03,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S085,2026-08-04,instagram,Instagram @proforge comments,question,sugar,ProForge,no,Is this bar sugar free?
+S086,2026-08-05,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S087,2026-08-05,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Is it on quick-commerce apps yet?
+S088,2026-08-05,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S089,2026-08-05,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S090,2026-08-06,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S091,2026-08-06,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S092,2026-08-07,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S093,2026-08-09,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Is it on quick-commerce apps yet?
+S094,2026-08-09,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S095,2026-08-10,instagram,Instagram @proforge comments,question,availability,ProForge,yes,Is it on quick-commerce apps yet?
+S096,2026-08-10,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S097,2026-08-10,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S098,2026-08-11,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S099,2026-08-11,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S100,2026-08-13,instagram,Instagram @proforge comments,request,new_flavour,ProForge,yes,Peanut butter flavour when?
+S101,2026-08-14,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S102,2026-08-14,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S103,2026-08-15,instagram,Instagram @proforge comments,question,protein,ProForge,yes,Is it 20 g protein per bar?
+S104,2026-08-16,instagram,Instagram @proforge comments,request,plant_protein,ProForge,yes,Please make a vegan version!
+S105,2026-08-16,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S106,2026-08-16,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S107,2026-08-17,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S108,2026-08-17,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S109,2026-08-18,instagram,Instagram @proforge comments,request,plant_protein,ProForge,yes,Please make a vegan version!
+S110,2026-08-18,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S111,2026-08-21,reddit,r/veganfitness,request,plant_protein,none,no,Wish there was a decent plant-protein bar in India.
+S112,2026-08-24,instagram,Instagram @proforge comments,question,sugar,ProForge,no,Is this bar sugar free?
+S113,2026-08-25,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S114,2026-08-26,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S115,2026-08-27,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S116,2026-08-27,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S117,2026-08-28,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S118,2026-08-29,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S119,2026-08-31,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S120,2026-08-31,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S121,2026-09-01,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S122,2026-09-01,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S123,2026-09-02,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S124,2026-09-03,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S125,2026-09-04,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S126,2026-09-05,instagram,Instagram @proforge comments,praise,general,ProForge,yes,Best bar for my morning commute!
+S127,2026-09-05,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S128,2026-09-06,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S129,2026-09-08,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S130,2026-09-08,reddit,r/IndianFitness,question,sugar,ProForge,no,Is ProForge actually low sugar or just marketing?
+S131,2026-09-08,reddit,r/gainit,complaint,texture,ProForge,no,"ProForge bars got chalky, anyone else?"
+S132,2026-09-09,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S133,2026-09-10,x,X #proteinbar,competitor_mention,comparison,CleanBar Co,no,CleanBar Co is my pick for no added sugar
+S134,2026-09-10,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S135,2026-09-11,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S136,2026-09-13,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S137,2026-09-13,instagram,Instagram @proforge comments,request,plant_protein,ProForge,no,Please make a vegan version!
+S138,2026-09-16,instagram,Instagram @proforge comments,complaint,texture,ProForge,no,Why is the new batch so chalky?
+S139,2026-09-19,reddit,r/IndianFitness,question,sugar,ProForge,no,ProForge vs CleanBar Co for sugar?
+S140,2026-09-20,instagram,Instagram @proforge comments,request,bigger_pack,ProForge,yes,Bring back the 24-bar box.
+S141,2026-09-20,instagram,Instagram @proforge comments,question,sugar,ProForge,yes,How much sugar is in the bar?
+S142,2026-09-22,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?
+S143,2026-09-23,instagram,Instagram @proforge comments,question,sugar,ProForge,no,Is this bar sugar free?
+S144,2026-09-23,x,X #proteinbar,competitor_mention,comparison,WheyWise,no,WheyWise vs the rest: taste test thread
+S145,2026-09-24,reddit,r/IndianFitness,question,sugar,ProForge,no,Anyone know the sugar content of ProForge bars?
+S146,2026-09-24,reddit,r/veganfitness,request,plant_protein,none,no,Any brand doing a pea-protein bar?

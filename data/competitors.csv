@@ -1,0 +1,9 @@
+id,brand,product,format,price_inr,servings,protein_g_per_serving,sugar_g_per_serving,claims,packaging,channels,date_checked
+P01,ProForge,ProForge Bar,bar,120,1,20,2,high protein,plastic wrapper,marketplace; d2c,2026-09-20
+P02,ProForge,ProForge Whey 1 kg,whey,2400,33,24,1,high protein,tub,marketplace; d2c,2026-09-20
+P03,CleanBar Co,CleanBar Whey 1 kg,whey,2200,33,24,0,no added sugar; clean label,resealable pouch,marketplace; d2c; quick_commerce,2026-09-20
+P04,CleanBar Co,CleanBar Protein Bar,bar,100,1,20,1,no added sugar; clean label,foil-lined wrapper,marketplace; d2c; quick_commerce,2026-09-20
+P05,MuscleMint,MuscleMint Bar,bar,110,1,20,1,no added sugar; high protein,foil-lined wrapper,marketplace; quick_commerce,2026-09-20
+P06,MuscleMint,MuscleMint Whey 1 kg,whey,2300,33,25,1,high protein,tub,marketplace; quick_commerce,2026-09-20
+P07,WheyWise,WheyWise Bar,bar,130,1,22,3,high protein; gut friendly,plastic wrapper,marketplace; d2c,2026-09-20
+P08,WheyWise,WheyWise Whey 1 kg,whey,2600,33,25,2,gut friendly,tub,marketplace; d2c,2026-09-20

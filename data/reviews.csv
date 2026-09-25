@@ -1,0 +1,151 @@
+id,date,product,channel,rating,text,reviewer_segment,customer_id
+R001,2026-04-01,bar,d2c,5,"Good protein, keeps me full till lunch.",beginner,C0634
+R002,2026-04-02,bar,marketplace,5,Love the chocolate one.,weight_loss,C0131
+R003,2026-04-03,bar,marketplace,2,Too expensive for what you get.,beginner,C2788
+R004,2026-04-03,bar,marketplace,5,"Good protein, keeps me full till lunch.",gym_regular,
+R005,2026-04-04,bar,d2c,2,"Gritty texture, feels like chewing sand.",weight_loss,C3207
+R006,2026-04-04,bar,d2c,2,Upset my stomach.,vegetarian,C3775
+R007,2026-04-05,bar,d2c,1,Weird aftertaste of sweetener.,weight_loss,
+R008,2026-04-05,bar,d2c,4,My go-to snack at the office.,beginner,C1572
+R009,2026-04-07,bar,marketplace,2,"Texture got worse, very dry now.",gym_regular,C2163
+R010,2026-04-07,bar,marketplace,5,Great after a workout.,endurance,C1587
+R011,2026-04-07,bar,marketplace,4,Easy to carry in my gym bag.,gym_regular,C0428
+R012,2026-04-10,bar,d2c,1,Too expensive for what you get.,vegetarian,C3065
+R013,2026-04-11,bar,marketplace,2,Chocolate taste is artificial.,vegetarian,
+R014,2026-04-12,bar,marketplace,2,Chocolate taste is artificial.,weight_loss,
+R015,2026-04-13,bar,marketplace,1,Weird aftertaste of sweetener.,vegetarian,
+R016,2026-04-16,bar,marketplace,2,Pricey for a snack bar.,weight_loss,C2628
+R017,2026-04-17,bar,marketplace,5,Easy to carry in my gym bag.,endurance,C2765
+R018,2026-04-18,bar,marketplace,4,"Good protein, keeps me full till lunch.",weight_loss,C2431
+R019,2026-04-20,bar,d2c,5,My go-to snack at the office.,weight_loss,
+R020,2026-04-21,bar,marketplace,5,Great after a workout.,beginner,C2236
+R021,2026-04-22,bar,marketplace,2,Wrapper tore open in the box.,weight_loss,C3989
+R022,2026-04-25,bar,d2c,5,Good value when it is on sale.,gym_regular,C1267
+R023,2026-04-26,bar,marketplace,1,"Gritty and dry, would not reorder.",weight_loss,C1039
+R024,2026-04-26,bar,d2c,2,Delivery was late by a week.,gym_regular,
+R025,2026-04-26,bar,marketplace,5,My go-to snack at the office.,gym_regular,C1355
+R026,2026-04-27,bar,d2c,5,"Solid bar, would recommend.",endurance,C3477
+R027,2026-04-28,bar,marketplace,1,My stomach did not agree with it.,vegetarian,
+R028,2026-04-29,bar,marketplace,5,Kids steal these from my bag.,endurance,C2081
+R029,2026-04-29,bar,marketplace,5,Kids steal these from my bag.,endurance,
+R030,2026-04-29,bar,marketplace,5,Easy to carry in my gym bag.,weight_loss,C3911
+R031,2026-04-30,bar,d2c,1,"Too chalky, I stopped buying.",beginner,C0549
+R032,2026-05-06,bar,d2c,2,Overpriced compared to other bars.,vegetarian,
+R033,2026-05-07,bar,d2c,2,Did not like the flavour.,beginner,C2934
+R034,2026-05-07,bar,d2c,4,"Solid bar, would recommend.",endurance,
+R035,2026-05-08,bar,marketplace,2,Meh.,gym_regular,C2855
+R036,2026-05-09,bar,marketplace,2,"Chalky aftertaste, not like it used to be.",endurance,C1071
+R037,2026-05-09,bar,marketplace,5,Love the chocolate one.,gym_regular,C3045
+R038,2026-05-11,bar,marketplace,5,Good value when it is on sale.,weight_loss,
+R039,2026-05-12,bar,marketplace,5,Good value when it is on sale.,gym_regular,C1413
+R040,2026-05-13,bar,d2c,2,The price keeps going up.,beginner,
+R041,2026-05-13,bar,marketplace,1,Not what I expected.,endurance,C0940
+R042,2026-05-18,bar,d2c,5,My go-to snack at the office.,gym_regular,C3985
+R043,2026-05-20,bar,d2c,2,Bars melted in transit.,beginner,C2266
+R044,2026-05-20,bar,d2c,4,Love the chocolate one.,gym_regular,
+R045,2026-05-21,bar,marketplace,2,Too sweet for me.,vegetarian,
+R046,2026-05-22,bar,d2c,2,The price keeps going up.,vegetarian,
+R047,2026-05-22,bar,marketplace,2,Made me bloated.,vegetarian,
+R048,2026-05-22,bar,marketplace,5,Great after a workout.,gym_regular,C1704
+R049,2026-05-24,bar,d2c,1,Found a cheaper bar with the same protein.,weight_loss,
+R050,2026-05-24,bar,marketplace,2,Delivery was late by a week.,endurance,C3490
+R051,2026-05-31,bar,marketplace,4,"Solid bar, would recommend.",endurance,C2643
+R052,2026-06-03,bar,marketplace,2,"Tastes fine but so chalky, hard to finish.",beginner,C3196
+R053,2026-06-05,bar,marketplace,2,"Late delivery, had to chase support.",beginner,C1904
+R054,2026-06-05,bar,marketplace,4,Great after a workout.,gym_regular,
+R055,2026-06-06,bar,d2c,5,"Solid bar, would recommend.",endurance,C1341
+R056,2026-06-07,bar,d2c,4,Kids steal these from my bag.,beginner,C0902
+R057,2026-06-09,bar,d2c,1,Too sweet for me.,gym_regular,
+R058,2026-06-10,bar,marketplace,2,Did not like the flavour.,weight_loss,
+R059,2026-06-11,bar,d2c,1,"Way too dry this batch, needed water with every bite.",endurance,
+R060,2026-06-11,bar,marketplace,1,"Arrived melted, the wrapper was stuck to the bar.",endurance,C3568
+R061,2026-06-11,bar,marketplace,2,Overpriced compared to other bars.,gym_regular,
+R062,2026-06-13,bar,marketplace,5,"Good protein, keeps me full till lunch.",weight_loss,
+R063,2026-06-15,bar,marketplace,1,The new batch is dry and crumbly.,gym_regular,C3151
+R064,2026-06-15,bar,marketplace,2,Found a cheaper bar with the same protein.,vegetarian,C2462
+R065,2026-06-16,bar,marketplace,2,Gave me gas and bloating.,vegetarian,
+R066,2026-06-21,bar,marketplace,1,Chalky. Really chalky.,weight_loss,C0001
+R067,2026-06-22,bar,d2c,5,Easy to carry in my gym bag.,weight_loss,
+R068,2026-06-25,bar,marketplace,5,Love the chocolate one.,weight_loss,
+R069,2026-06-29,bar,marketplace,2,Made me bloated.,vegetarian,
+R070,2026-06-30,bar,d2c,2,Pricey for a snack bar.,beginner,C3155
+R071,2026-07-02,bar,marketplace,1,"Texture got worse, very dry now.",endurance,C2689
+R072,2026-07-02,bar,marketplace,2,"Late delivery, had to chase support.",endurance,
+R073,2026-07-02,bar,d2c,5,"Good protein, keeps me full till lunch.",beginner,
+R074,2026-07-04,bar,marketplace,2,Too sweet for me.,gym_regular,
+R075,2026-07-04,bar,d2c,1,Gave me gas and bloating.,vegetarian,
+R076,2026-07-05,bar,marketplace,2,Too sweet for me.,vegetarian,C2768
+R077,2026-07-05,bar,marketplace,1,Made me bloated.,vegetarian,C1589
+R078,2026-07-06,bar,marketplace,2,Bars melted in transit.,endurance,C2178
+R079,2026-07-06,bar,marketplace,2,Pricey for a snack bar.,endurance,
+R080,2026-07-07,bar,d2c,2,"Tastes fine but so chalky, hard to finish.",weight_loss,C2927
+R081,2026-07-08,bar,marketplace,2,Overpriced compared to other bars.,vegetarian,
+R082,2026-07-08,bar,d2c,4,Easy to carry in my gym bag.,gym_regular,C3438
+R083,2026-07-10,bar,marketplace,1,Upset my stomach.,vegetarian,C2124
+R084,2026-07-12,bar,marketplace,1,"Tastes fine but so chalky, hard to finish.",beginner,C1277
+R085,2026-07-12,bar,marketplace,2,"Gritty texture, feels like chewing sand.",weight_loss,C3290
+R086,2026-07-13,bar,d2c,1,Too expensive for what you get.,gym_regular,C2702
+R087,2026-07-16,bar,marketplace,1,Would not buy again.,endurance,
+R088,2026-07-17,bar,marketplace,3,Good bar but I am bored of the same flavour every week.,gym_regular,C1800
+R089,2026-07-18,bar,marketplace,2,"Chalky aftertaste, not like it used to be.",gym_regular,
+R090,2026-07-19,bar,marketplace,1,Made me bloated.,vegetarian,C2890
+R091,2026-07-20,bar,d2c,1,"Gritty texture, feels like chewing sand.",gym_regular,C2977
+R092,2026-07-20,bar,marketplace,2,"Gritty and dry, would not reorder.",beginner,
+R093,2026-07-21,bar,d2c,4,"Solid bar, would recommend.",gym_regular,C1881
+R094,2026-07-22,bar,d2c,4,"Solid bar, would recommend.",weight_loss,C1966
+R095,2026-07-24,bar,marketplace,5,Kids steal these from my bag.,endurance,
+R096,2026-07-25,bar,d2c,2,"Way too dry this batch, needed water with every bite.",beginner,C2527
+R097,2026-07-26,bar,d2c,1,Found a cheaper bar with the same protein.,vegetarian,C1175
+R098,2026-07-26,bar,marketplace,2,The price keeps going up.,gym_regular,
+R099,2026-07-26,bar,d2c,2,"Late delivery, had to chase support.",beginner,C3881
+R100,2026-07-27,bar,marketplace,4,Great after a workout.,weight_loss,
+R101,2026-07-28,bar,marketplace,1,"Chalky aftertaste, not like it used to be.",gym_regular,C2051
+R102,2026-07-28,bar,marketplace,5,My go-to snack at the office.,beginner,
+R103,2026-07-29,bar,d2c,2,Chalky texture ruins an otherwise decent bar.,gym_regular,C0244
+R104,2026-07-29,bar,marketplace,5,Easy to carry in my gym bag.,endurance,C0573
+R105,2026-07-30,bar,d2c,2,My stomach did not agree with it.,vegetarian,C2940
+R106,2026-08-01,bar,d2c,5,"Good protein, keeps me full till lunch.",gym_regular,C3763
+R107,2026-08-01,bar,marketplace,5,Easy to carry in my gym bag.,gym_regular,
+R108,2026-08-04,bar,d2c,2,Overpriced compared to other bars.,beginner,C0169
+R109,2026-08-05,bar,marketplace,4,Great after a workout.,endurance,C3203
+R110,2026-08-06,bar,marketplace,2,Meh.,weight_loss,C2292
+R111,2026-08-07,bar,marketplace,2,The new batch is dry and crumbly.,beginner,C2798
+R112,2026-08-09,bar,marketplace,1,Chalky. Really chalky.,endurance,C3417
+R113,2026-08-09,bar,marketplace,1,Chocolate taste is artificial.,weight_loss,C1914
+R114,2026-08-09,bar,d2c,4,Love the chocolate one.,weight_loss,
+R115,2026-08-14,bar,d2c,1,Too expensive for what you get.,vegetarian,C0308
+R116,2026-08-14,bar,marketplace,4,"Good protein, keeps me full till lunch.",weight_loss,C0180
+R117,2026-08-15,bar,marketplace,3,"Okay, but bored of the flavour now.",beginner,C3113
+R118,2026-08-16,bar,marketplace,5,Kids steal these from my bag.,beginner,C3393
+R119,2026-08-18,bar,marketplace,3,"Same flavour every time, getting bored of it.",beginner,C1015
+R120,2026-08-19,bar,marketplace,2,Weird aftertaste of sweetener.,vegetarian,
+R121,2026-08-19,bar,d2c,5,"Solid bar, would recommend.",weight_loss,C3652
+R122,2026-08-19,bar,marketplace,5,Good value when it is on sale.,gym_regular,
+R123,2026-08-21,bar,d2c,2,The new batch is dry and crumbly.,weight_loss,C0402
+R124,2026-08-21,bar,d2c,4,Easy to carry in my gym bag.,weight_loss,
+R125,2026-08-22,bar,marketplace,1,"Too chalky, I stopped buying.",endurance,C2916
+R126,2026-08-22,bar,marketplace,2,Chocolate taste is artificial.,vegetarian,C0353
+R127,2026-08-23,bar,marketplace,1,"Way too dry this batch, needed water with every bite.",endurance,C2098
+R128,2026-08-24,bar,marketplace,1,Half the box arrived melted.,beginner,C2165
+R129,2026-08-27,bar,marketplace,2,Did not like the flavour.,weight_loss,
+R130,2026-08-27,bar,marketplace,1,Delivery was late by a week.,endurance,C2053
+R131,2026-08-27,bar,d2c,5,My go-to snack at the office.,gym_regular,C0724
+R132,2026-08-28,bar,marketplace,5,"Solid bar, would recommend.",endurance,C0115
+R133,2026-08-29,bar,d2c,1,"Used to love it, now it is dry and gritty.",endurance,C2670
+R134,2026-08-30,bar,d2c,5,Love the chocolate one.,gym_regular,C1409
+R135,2026-09-01,bar,marketplace,4,Good value when it is on sale.,gym_regular,C3412
+R136,2026-09-04,bar,marketplace,1,"Arrived melted, the wrapper was stuck to the bar.",gym_regular,
+R137,2026-09-05,bar,marketplace,5,My go-to snack at the office.,beginner,C2724
+R138,2026-09-08,bar,d2c,2,Delivery was late by a week.,gym_regular,
+R139,2026-09-09,bar,marketplace,5,Love the chocolate one.,endurance,C0542
+R140,2026-09-10,bar,marketplace,1,Wrapper tore open in the box.,endurance,
+R141,2026-09-10,bar,marketplace,5,Great after a workout.,beginner,
+R142,2026-09-12,bar,d2c,1,Not what I expected.,weight_loss,C1652
+R143,2026-09-13,bar,d2c,1,Pricey for a snack bar.,endurance,
+R144,2026-09-13,bar,d2c,4,Kids steal these from my bag.,beginner,C2076
+R145,2026-09-15,bar,d2c,2,"Wrapper torn, bar exposed.",gym_regular,C3513
+R146,2026-09-15,bar,d2c,5,Good value when it is on sale.,endurance,C0873
+R147,2026-09-19,bar,marketplace,2,Did not like the flavour.,weight_loss,
+R148,2026-09-20,bar,d2c,1,"Arrived melted, the wrapper was stuck to the bar.",endurance,
+R149,2026-09-23,bar,marketplace,5,Love the chocolate one.,weight_loss,
+R150,2026-09-24,bar,d2c,1,Dry as cardboard.,gym_regular,C0798

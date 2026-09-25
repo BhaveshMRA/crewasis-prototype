@@ -1,0 +1,6 @@
+prefix,name,file,confidence,synthetic,collected_at,description
+R,Reviews,reviews.csv,0.9,yes,2026-09-24,Marketplace and website reviews of the ProForge bar
+S,Social signals,social_signals.csv,0.7,yes,2026-09-24,"Instagram comments, Reddit posts and X posts about protein bars"
+P,Competitor catalogue,competitors.csv,0.95,yes,2026-09-20,"Prices, nutrition, claims, packaging and channels of 4 brands"
+M,Sales,sales.csv,1.0,yes,2026-09-24,Monthly ProForge bar sales by channel
+O,Orders,orders.csv,1.0,yes,2026-09-24,12 months of online orders by anonymised customer id

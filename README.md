@@ -12,6 +12,39 @@ approves anything risky before it happens.
 
 ---
 
+## ▶ Run the demo
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Click **Run the FDE**, then open **② Brief** and **③ Team board**. No API key and no internet are needed.
+To test everything: `python test_workflow.py`. To regenerate the data: `python data/generate.py`.
+
+### What's built vs. the full design below
+
+The rest of this README is the **full design**. The demo build is a cut-down version of it, made to run reliably
+on a laptop:
+
+| Part | In the demo build | Full design |
+|---|---|---|
+| Data | 5 synthetic CSVs + `sources.csv` (reviews 150, social 146, competitors 8, sales 24, orders 7,373 rows) | same, then live connectors |
+| Lenses | 6: product, competitor, customer, channel, retention, **community (where buyers talk: Reddit, X, Instagram)** | same |
+| Facts | 13 (F1–F13), all calculated in `engine.py` | same |
+| Retention playbook | 9 plays: PL1–PL7 plus **PL8 · Answer where they ask** and **PL9 · Show up where competitors talk**. 8 match; PL7 is shown as not matched, with the reason | same |
+| Brief | findings with citations, rows behind every fact, root causes with confidence by rule, retention plan, where to show up, gaps, sources used | same |
+| Check step | `check_citations()` + `check_numbers()` run on every sentence (21 of 21 pass). Tick **Simulate an LLM mistake** in the sidebar to watch a wrong number get caught and replaced | same, on LLM-written sentences |
+| LLM | **none**: plan, brief and actions use templates, so the demo can't fail on a key or Wi-Fi | Plan, Synthesize and Frame use an LLM |
+| Pipeline | plain Python functions | LangGraph |
+| Cards | 13 work cards, 4 approval cards at the start; accept, execute, approve, reject, ask again, hand off (re-score, re-word, re-gate, withdraw stale approvals); full event history | same |
+| Referral | not built | slide only |
+
+**Built files:** `app.py` (Streamlit UI) · `engine.py` (lenses, facts, playbook, scoring, gate, checks) ·
+`workflow.py` (card lifecycle) · `db.py` (SQLite) · `data/generate.py` + CSVs · `test_workflow.py`.
+
+---
+
 ## 1. The problem
 
 Take a small protein brand. Its signals are scattered: marketplace reviews, Instagram comments, competitor product
