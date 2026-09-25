@@ -200,6 +200,7 @@ flowchart LR
 │   ├── sales.csv       # 24 rows: 12 months × 2 channels
 │   └── orders.csv      # 7,373 orders by anonymised customer id
 ├── tests/              # 157 tests (pytest + Streamlit AppTest + a stub Ollama server)
+├── deck/               # 3-slide pitch deck (CREWASIS_Ask_Winston.pptx) and its pptxgenjs source
 ├── .env.example        # copy to .env (git-ignored)
 └── requirements*.txt
 ```
